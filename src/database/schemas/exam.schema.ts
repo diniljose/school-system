@@ -26,7 +26,7 @@ export class Exam {
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Class' }] })
   classes: Types.ObjectId[];
 
-  @Prop({ type:  [Object], default: [] })
+  @Prop({ type: [Object], default: [] })
   schedule: {
     class: Types.ObjectId;
     subject: Types.ObjectId;

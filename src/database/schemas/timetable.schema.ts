@@ -95,4 +95,7 @@ export class Timetable {
 
 export const TimetableSchema = SchemaFactory.createForClass(Timetable);
 
-TimetableSchema.index({ school: 1, academicYear: 1, class: 1, section: 1 }, { unique: true });
+TimetableSchema.index(
+  { school: 1, academicYear: 1, class: 1, section: 1 },
+  { unique: true },
+);

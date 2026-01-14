@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Class, ClassDocument } from '../../database/schemas/class.schema';
@@ -14,7 +18,10 @@ export class ClassesService {
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
   ) {}
 
-  async create(createClassDto: CreateClassDto, schoolId: string): Promise<Class> {
+  async create(
+    createClassDto: CreateClassDto,
+    schoolId: string,
+  ): Promise<Class> {
     const existing = await this.classModel.findOne({
       school: schoolId,
       name: createClassDto.name,
@@ -101,7 +108,11 @@ export class ClassesService {
     return classEntity;
   }
 
-  async update(id: string, updateClassDto: UpdateClassDto, schoolId: string): Promise<Class> {
+  async update(
+    id: string,
+    updateClassDto: UpdateClassDto,
+    schoolId: string,
+  ): Promise<Class> {
     const classEntity = await this.classModel.findOneAndUpdate(
       { _id: id, school: schoolId },
       { $set: updateClassDto },
@@ -116,21 +127,33 @@ export class ClassesService {
   }
 
   async delete(id: string, schoolId: string): Promise<void> {
-    const result = await this.classModel.deleteOne({ _id: id, school: schoolId });
+    const result = await this.classModel.deleteOne({
+      _id: id,
+      school: schoolId,
+    });
 
     if (result.deletedCount === 0) {
       throw new NotFoundException('Class not found');
     }
   }
 
-  async addSection(classId: string, sectionDto: AddSectionDto, schoolId: string): Promise<Class> {
-    const classEntity = await this.classModel.findOne({ _id: classId, school: schoolId });
+  async addSection(
+    classId: string,
+    sectionDto: AddSectionDto,
+    schoolId: string,
+  ): Promise<Class> {
+    const classEntity = await this.classModel.findOne({
+      _id: classId,
+      school: schoolId,
+    });
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
 
-    const sectionExists = classEntity.sections.some(s => s.name === sectionDto.name);
+    const sectionExists = classEntity.sections.some(
+      (s) => s.name === sectionDto.name,
+    );
     if (sectionExists) {
       throw new BadRequestException('Section with this name already exists');
     }
@@ -150,19 +173,24 @@ export class ClassesService {
     sectionDto: Partial<AddSectionDto>,
     schoolId: string,
   ): Promise<Class> {
-    const classEntity = await this.classModel.findOne({ _id: classId, school: schoolId });
+    const classEntity = await this.classModel.findOne({
+      _id: classId,
+      school: schoolId,
+    });
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
 
-    const section = classEntity.sections.find(s => s.name === sectionName);
+    const section = classEntity.sections.find((s) => s.name === sectionName);
     if (!section) {
       throw new NotFoundException('Section not found');
     }
 
     if (sectionDto.name && sectionDto.name !== sectionName) {
-      const nameExists = classEntity.sections.some(s => s.name === sectionDto.name);
+      const nameExists = classEntity.sections.some(
+        (s) => s.name === sectionDto.name,
+      );
       if (nameExists) {
         throw new BadRequestException('Section with this name already exists');
       }
@@ -176,14 +204,23 @@ export class ClassesService {
     return classEntity.save();
   }
 
-  async removeSection(classId: string, sectionName: string, schoolId: string): Promise<Class> {
-    const classEntity = await this.classModel.findOne({ _id: classId, school: schoolId });
+  async removeSection(
+    classId: string,
+    sectionName: string,
+    schoolId: string,
+  ): Promise<Class> {
+    const classEntity = await this.classModel.findOne({
+      _id: classId,
+      school: schoolId,
+    });
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
 
-    const sectionIndex = classEntity.sections.findIndex(s => s.name === sectionName);
+    const sectionIndex = classEntity.sections.findIndex(
+      (s) => s.name === sectionName,
+    );
     if (sectionIndex === -1) {
       throw new NotFoundException('Section not found');
     }
@@ -192,12 +229,22 @@ export class ClassesService {
     return classEntity.save();
   }
 
-  async assignSubjects(classId: string, subjectIds: string[], schoolId: string): Promise<Class> {
-    const classEntity = await this.classModel.findOneAndUpdate(
-      { _id: classId, school: schoolId },
-      { $addToSet: { subjects: { $each: subjectIds.map(id => new Types.ObjectId(id)) } } },
-      { new: true },
-    ).populate('subjects', 'name code');
+  async assignSubjects(
+    classId: string,
+    subjectIds: string[],
+    schoolId: string,
+  ): Promise<Class> {
+    const classEntity = await this.classModel
+      .findOneAndUpdate(
+        { _id: classId, school: schoolId },
+        {
+          $addToSet: {
+            subjects: { $each: subjectIds.map((id) => new Types.ObjectId(id)) },
+          },
+        },
+        { new: true },
+      )
+      .populate('subjects', 'name code');
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
@@ -206,12 +253,18 @@ export class ClassesService {
     return classEntity;
   }
 
-  async removeSubject(classId: string, subjectId: string, schoolId: string): Promise<Class> {
-    const classEntity = await this.classModel.findOneAndUpdate(
-      { _id: classId, school: schoolId },
-      { $pull: { subjects: new Types.ObjectId(subjectId) } },
-      { new: true },
-    ).populate('subjects', 'name code');
+  async removeSubject(
+    classId: string,
+    subjectId: string,
+    schoolId: string,
+  ): Promise<Class> {
+    const classEntity = await this.classModel
+      .findOneAndUpdate(
+        { _id: classId, school: schoolId },
+        { $pull: { subjects: new Types.ObjectId(subjectId) } },
+        { new: true },
+      )
+      .populate('subjects', 'name code');
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
@@ -226,13 +279,16 @@ export class ClassesService {
     teacherId: string,
     schoolId: string,
   ): Promise<Class> {
-    const classEntity = await this.classModel.findOne({ _id: classId, school: schoolId });
+    const classEntity = await this.classModel.findOne({
+      _id: classId,
+      school: schoolId,
+    });
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
 
-    const section = classEntity.sections.find(s => s.name === sectionName);
+    const section = classEntity.sections.find((s) => s.name === sectionName);
     if (!section) {
       throw new NotFoundException('Section not found');
     }
@@ -253,7 +309,10 @@ export class ClassesService {
           promotionCriteria: {
             minimumPercentage: criteriaDto.minimumPercentage,
             minimumAttendance: criteriaDto.minimumAttendance,
-            mandatorySubjects: criteriaDto.mandatorySubjects?.map(id => new Types.ObjectId(id)) || [],
+            mandatorySubjects:
+              criteriaDto.mandatorySubjects?.map(
+                (id) => new Types.ObjectId(id),
+              ) || [],
           },
         },
       },
@@ -285,14 +344,21 @@ export class ClassesService {
     return classEntity;
   }
 
-  async getClassStudents(classId: string, sectionName: string, schoolId: string) {
-    const classEntity = await this.classModel.findOne({ _id: classId, school: schoolId });
+  async getClassStudents(
+    classId: string,
+    sectionName: string,
+    schoolId: string,
+  ) {
+    const classEntity = await this.classModel.findOne({
+      _id: classId,
+      school: schoolId,
+    });
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
 
-    const section = classEntity.sections.find(s => s.name === sectionName);
+    const section = classEntity.sections.find((s) => s.name === sectionName);
     if (!section) {
       throw new NotFoundException('Section not found');
     }
@@ -318,8 +384,11 @@ export class ClassesService {
       class: classEntity.name,
       grade: classEntity.grade,
       totalSections: classEntity.sections.length,
-      totalCapacity: classEntity.sections.reduce((sum, s) => sum + s.capacity, 0),
-      sections: classEntity.sections.map(section => ({
+      totalCapacity: classEntity.sections.reduce(
+        (sum, s) => sum + s.capacity,
+        0,
+      ),
+      sections: classEntity.sections.map((section) => ({
         name: section.name,
         capacity: section.capacity,
         enrolled: 0,

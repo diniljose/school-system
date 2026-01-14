@@ -9,7 +9,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -42,18 +47,18 @@ export class StudentsController {
   @Get()
   @Roles(
     UserRole.SCHOOL_ADMIN,
-    UserRole. PRINCIPAL,
-    UserRole. VICE_PRINCIPAL,
+    UserRole.PRINCIPAL,
+    UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
     UserRole.CLASS_TEACHER,
   )
   @ApiOperation({ summary: 'Get all students with filters' })
   @ApiQuery({ name: 'classId', required: false })
-  @ApiQuery({ name:  'section', required: false })
-  @ApiQuery({ name:  'status', required: false, enum: StudentStatus })
+  @ApiQuery({ name: 'section', required: false })
+  @ApiQuery({ name: 'status', required: false, enum: StudentStatus })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name:  'limit', required: false })
+  @ApiQuery({ name: 'limit', required: false })
   async findAll(
     @CurrentUser('school') schoolId: string,
     @Query('classId') classId?: string,

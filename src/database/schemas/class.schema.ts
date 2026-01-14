@@ -17,7 +17,7 @@ export class Class {
   @Prop()
   description: string;
 
-  @Prop({ type:  [Object], default: [] })
+  @Prop({ type: [Object], default: [] })
   sections: {
     name: string; // A, B, C
     capacity: number;
@@ -30,7 +30,7 @@ export class Class {
   @Prop({ type: Types.ObjectId, ref: 'Class' })
   nextClass: Types.ObjectId; // For automatic promotion
 
-  @Prop({ type:  Object })
+  @Prop({ type: Object })
   promotionCriteria: {
     minimumPercentage: number;
     minimumAttendance: number;

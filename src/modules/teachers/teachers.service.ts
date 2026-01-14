@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Teacher, TeacherDocument } from '../../database/schemas/teacher.schema';
+import {
+  Teacher,
+  TeacherDocument,
+} from '../../database/schemas/teacher.schema';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { AddQualificationDto } from './dto/add-qualification.dto';
@@ -15,11 +22,16 @@ export class TeachersService {
 
   private generateEmployeeId(): string {
     const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+    const random = Math.floor(Math.random() * 100000)
+      .toString()
+      .padStart(5, '0');
     return `EMP${year}${random}`;
   }
 
-  async create(createTeacherDto: CreateTeacherDto, schoolId: string): Promise<Teacher> {
+  async create(
+    createTeacherDto: CreateTeacherDto,
+    schoolId: string,
+  ): Promise<Teacher> {
     const emailExists = await this.teacherModel.findOne({
       school: schoolId,
       email: createTeacherDto.email,
@@ -130,7 +142,11 @@ export class TeachersService {
     return teacher;
   }
 
-  async update(id: string, updateTeacherDto: UpdateTeacherDto, schoolId: string): Promise<Teacher> {
+  async update(
+    id: string,
+    updateTeacherDto: UpdateTeacherDto,
+    schoolId: string,
+  ): Promise<Teacher> {
     if (updateTeacherDto.email) {
       const emailExists = await this.teacherModel.findOne({
         school: schoolId,
@@ -157,7 +173,10 @@ export class TeachersService {
   }
 
   async delete(id: string, schoolId: string): Promise<void> {
-    const result = await this.teacherModel.deleteOne({ _id: id, school: schoolId });
+    const result = await this.teacherModel.deleteOne({
+      _id: id,
+      school: schoolId,
+    });
 
     if (result.deletedCount === 0) {
       throw new NotFoundException('Teacher not found');
@@ -169,7 +188,10 @@ export class TeachersService {
     qualificationDto: AddQualificationDto,
     schoolId: string,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({ _id: teacherId, school: schoolId });
+    const teacher = await this.teacherModel.findOne({
+      _id: teacherId,
+      school: schoolId,
+    });
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -190,13 +212,19 @@ export class TeachersService {
     qualificationIndex: number,
     schoolId: string,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({ _id: teacherId, school: schoolId });
+    const teacher = await this.teacherModel.findOne({
+      _id: teacherId,
+      school: schoolId,
+    });
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
     }
 
-    if (qualificationIndex < 0 || qualificationIndex >= teacher.qualifications.length) {
+    if (
+      qualificationIndex < 0 ||
+      qualificationIndex >= teacher.qualifications.length
+    ) {
       throw new BadRequestException('Invalid qualification index');
     }
 
@@ -209,7 +237,10 @@ export class TeachersService {
     experienceDto: AddExperienceDto,
     schoolId: string,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({ _id: teacherId, school: schoolId });
+    const teacher = await this.teacherModel.findOne({
+      _id: teacherId,
+      school: schoolId,
+    });
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -231,7 +262,10 @@ export class TeachersService {
     experienceIndex: number,
     schoolId: string,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({ _id: teacherId, school: schoolId });
+    const teacher = await this.teacherModel.findOne({
+      _id: teacherId,
+      school: schoolId,
+    });
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -250,11 +284,17 @@ export class TeachersService {
     subjectIds: string[],
     schoolId: string,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOneAndUpdate(
-      { _id: teacherId, school: schoolId },
-      { $addToSet: { subjects: { $each: subjectIds.map(id => new Types.ObjectId(id)) } } },
-      { new: true },
-    ).populate('subjects', 'name code');
+    const teacher = await this.teacherModel
+      .findOneAndUpdate(
+        { _id: teacherId, school: schoolId },
+        {
+          $addToSet: {
+            subjects: { $each: subjectIds.map((id) => new Types.ObjectId(id)) },
+          },
+        },
+        { new: true },
+      )
+      .populate('subjects', 'name code');
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -268,11 +308,19 @@ export class TeachersService {
     classIds: string[],
     schoolId: string,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOneAndUpdate(
-      { _id: teacherId, school: schoolId },
-      { $addToSet: { assignedClasses: { $each: classIds.map(id => new Types.ObjectId(id)) } } },
-      { new: true },
-    ).populate('assignedClasses', 'name grade');
+    const teacher = await this.teacherModel
+      .findOneAndUpdate(
+        { _id: teacherId, school: schoolId },
+        {
+          $addToSet: {
+            assignedClasses: {
+              $each: classIds.map((id) => new Types.ObjectId(id)),
+            },
+          },
+        },
+        { new: true },
+      )
+      .populate('assignedClasses', 'name grade');
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -287,7 +335,10 @@ export class TeachersService {
     sectionName: string,
     schoolId: string,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({ _id: teacherId, school: schoolId });
+    const teacher = await this.teacherModel.findOne({
+      _id: teacherId,
+      school: schoolId,
+    });
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -347,35 +398,31 @@ export class TeachersService {
   }
 
   async getTeacherStatistics(schoolId: string) {
-    const [
-      totalTeachers,
-      activeTeachers,
-      departmentStats,
-      designationStats,
-    ] = await Promise.all([
-      this.teacherModel.countDocuments({ school: schoolId }),
-      this.teacherModel.countDocuments({ school: schoolId, isActive: true }),
-      this.teacherModel.aggregate([
-        { $match: { school: new Types.ObjectId(schoolId) } },
-        { $group: { _id: '$department', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-      ]),
-      this.teacherModel.aggregate([
-        { $match: { school: new Types.ObjectId(schoolId) } },
-        { $group: { _id: '$designation', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-      ]),
-    ]);
+    const [totalTeachers, activeTeachers, departmentStats, designationStats] =
+      await Promise.all([
+        this.teacherModel.countDocuments({ school: schoolId }),
+        this.teacherModel.countDocuments({ school: schoolId, isActive: true }),
+        this.teacherModel.aggregate([
+          { $match: { school: new Types.ObjectId(schoolId) } },
+          { $group: { _id: '$department', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+        ]),
+        this.teacherModel.aggregate([
+          { $match: { school: new Types.ObjectId(schoolId) } },
+          { $group: { _id: '$designation', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+        ]),
+      ]);
 
     return {
       totalTeachers,
       activeTeachers,
       inactiveTeachers: totalTeachers - activeTeachers,
-      byDepartment: departmentStats.map(stat => ({
+      byDepartment: departmentStats.map((stat) => ({
         department: stat._id || 'Not Assigned',
         count: stat.count,
       })),
-      byDesignation: designationStats.map(stat => ({
+      byDesignation: designationStats.map((stat) => ({
         designation: stat._id || 'Not Assigned',
         count: stat.count,
       })),

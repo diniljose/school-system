@@ -15,7 +15,7 @@ export class School {
   slug: string; // URL-friendly identifier
 
   @Prop()
-  logo:  string;
+  logo: string;
 
   @Prop()
   address: string;

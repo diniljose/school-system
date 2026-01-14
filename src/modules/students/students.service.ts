@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Student, StudentDocument } from '../../database/schemas/student.schema';
+import {
+  Student,
+  StudentDocument,
+} from '../../database/schemas/student.schema';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentStatus } from '../../common/enums/student-status.enum';
@@ -12,10 +19,14 @@ export class StudentsService {
     @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
   ) {}
 
-  async create(createStudentDto:  CreateStudentDto, schoolId: string): Promise<Student> {
+  async create(
+    createStudentDto: CreateStudentDto,
+    schoolId: string,
+  ): Promise<Student> {
     // Generate admission number if not provided
     if (!createStudentDto.admissionNumber) {
-      createStudentDto.admissionNumber = await this.generateAdmissionNumber(schoolId);
+      createStudentDto.admissionNumber =
+        await this.generateAdmissionNumber(schoolId);
     }
 
     // Check if admission number already exists
@@ -48,13 +59,13 @@ export class StudentsService {
       limit?: number;
     },
   ) {
-    const query:  any = { school: schoolId };
+    const query: any = { school: schoolId };
 
     if (filters.classId) {
       query.currentClass = filters.classId;
     }
 
-    if (filters. section) {
+    if (filters.section) {
       query.currentSection = filters.section;
     }
 
@@ -63,12 +74,12 @@ export class StudentsService {
     }
 
     if (filters.academicYearId) {
-      query.currentAcademicYear = filters. academicYearId;
+      query.currentAcademicYear = filters.academicYearId;
     }
 
     if (filters.search) {
       query.$or = [
-        { firstName:  { $regex: filters.search, $options: 'i' } },
+        { firstName: { $regex: filters.search, $options: 'i' } },
         { lastName: { $regex: filters.search, $options: 'i' } },
         { admissionNumber: { $regex: filters.search, $options: 'i' } },
       ];
@@ -80,13 +91,13 @@ export class StudentsService {
 
     const [students, total] = await Promise.all([
       this.studentModel
-        . find(query)
+        .find(query)
         .populate('currentClass', 'name grade')
         .populate('parents', 'firstName lastName phone relationship')
         .skip(skip)
         .limit(limit)
         .sort({ firstName: 1 }),
-      this.studentModel. countDocuments(query),
+      this.studentModel.countDocuments(query),
     ]);
 
     return {
@@ -100,9 +111,9 @@ export class StudentsService {
     };
   }
 
-  async findById(id: string, schoolId:  string): Promise<Student> {
+  async findById(id: string, schoolId: string): Promise<Student> {
     const student = await this.studentModel
-      .findOne({ _id: id, school:  schoolId })
+      .findOne({ _id: id, school: schoolId })
       .populate('currentClass')
       .populate('currentSection')
       .populate('currentAcademicYear')
@@ -116,8 +127,11 @@ export class StudentsService {
     return student;
   }
 
-  async findByAdmissionNumber(admissionNumber:  string, schoolId: string): Promise<Student> {
-    const student = await this.studentModel. findOne({
+  async findByAdmissionNumber(
+    admissionNumber: string,
+    schoolId: string,
+  ): Promise<Student> {
+    const student = await this.studentModel.findOne({
       admissionNumber,
       school: schoolId,
     });
@@ -129,7 +143,11 @@ export class StudentsService {
     return student;
   }
 
-  async update(id: string, updateStudentDto: UpdateStudentDto, schoolId: string): Promise<Student> {
+  async update(
+    id: string,
+    updateStudentDto: UpdateStudentDto,
+    schoolId: string,
+  ): Promise<Student> {
     const student = await this.studentModel.findOneAndUpdate(
       { _id: id, school: schoolId },
       { $set: updateStudentDto },
@@ -143,7 +161,11 @@ export class StudentsService {
     return student;
   }
 
-  async updateStatus(id: string, status:  StudentStatus, schoolId: string): Promise<Student> {
+  async updateStatus(
+    id: string,
+    status: StudentStatus,
+    schoolId: string,
+  ): Promise<Student> {
     return this.update(id, { status } as UpdateStudentDto, schoolId);
   }
 
@@ -190,7 +212,7 @@ export class StudentsService {
   ): Promise<Student> {
     return this.studentModel.findByIdAndUpdate(
       studentId,
-      { $push: { academicHistory:  historyEntry } },
+      { $push: { academicHistory: historyEntry } },
       { new: true },
     );
   }
@@ -223,7 +245,7 @@ export class StudentsService {
   ): Promise<Student> {
     return this.studentModel.findByIdAndUpdate(
       studentId,
-      { $push:  { transferHistory: transferEntry } },
+      { $push: { transferHistory: transferEntry } },
       { new: true },
     );
   }
@@ -235,18 +257,23 @@ export class StudentsService {
   }
 
   async getStudentStats(schoolId: string) {
-    const stats = await this.studentModel. aggregate([
-      { $match:  { school: new Types.ObjectId(schoolId) } },
+    const stats = await this.studentModel.aggregate([
+      { $match: { school: new Types.ObjectId(schoolId) } },
       {
         $group: {
-          _id:  '$status',
+          _id: '$status',
           count: { $sum: 1 },
         },
       },
     ]);
 
     const genderStats = await this.studentModel.aggregate([
-      { $match: { school: new Types.ObjectId(schoolId), status: StudentStatus.ACTIVE } },
+      {
+        $match: {
+          school: new Types.ObjectId(schoolId),
+          status: StudentStatus.ACTIVE,
+        },
+      },
       {
         $group: {
           _id: '$gender',
@@ -256,9 +283,14 @@ export class StudentsService {
     ]);
 
     const classWiseStats = await this.studentModel.aggregate([
-      { $match: { school: new Types.ObjectId(schoolId), status: StudentStatus.ACTIVE } },
       {
-        $group:  {
+        $match: {
+          school: new Types.ObjectId(schoolId),
+          status: StudentStatus.ACTIVE,
+        },
+      },
+      {
+        $group: {
           _id: '$currentClass',
           count: { $sum: 1 },
         },
@@ -275,7 +307,7 @@ export class StudentsService {
 
     return {
       statusWise: stats,
-      genderWise:  genderStats,
+      genderWise: genderStats,
       classWise: classWiseStats,
     };
   }

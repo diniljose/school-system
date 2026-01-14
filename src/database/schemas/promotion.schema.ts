@@ -13,7 +13,7 @@ export class Promotion {
   fromAcademicYear: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'AcademicYear', required: true })
-  toAcademicYear: Types. ObjectId;
+  toAcademicYear: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Student', required: true })
   student: Types.ObjectId;
@@ -24,13 +24,17 @@ export class Promotion {
   @Prop({ type: Types.ObjectId, ref: 'Class', required: true })
   toClass: Types.ObjectId;
 
-  @Prop({ required:  true })
+  @Prop({ required: true })
   fromSection: string;
 
   @Prop({ required: true })
   toSection: string;
 
-  @Prop({ type: String, enum: PromotionStatus, default: PromotionStatus.PENDING })
+  @Prop({
+    type: String,
+    enum: PromotionStatus,
+    default: PromotionStatus.PENDING,
+  })
   status: PromotionStatus;
 
   @Prop()

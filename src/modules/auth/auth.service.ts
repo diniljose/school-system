@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -14,9 +18,12 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const { email, password, schoolCode } = loginDto;
-    
-    const user = await this.usersService.findByEmailAndSchool(email, schoolCode);
-    
+
+    const user = await this.usersService.findByEmailAndSchool(
+      email,
+      schoolCode,
+    );
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -26,7 +33,7 @@ export class AuthService {
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -61,13 +68,13 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const existingUser = await this.usersService.findByEmail(registerDto.email);
-    
+
     if (existingUser) {
       throw new BadRequestException('Email already registered');
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    
+
     const user = await this.usersService.create({
       ...registerDto,
       password: hashedPassword,
@@ -85,7 +92,7 @@ export class AuthService {
     try {
       const payload = this.jwtService.verify(refreshToken);
       const user = await this.usersService.findById(payload.sub);
-      
+
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Invalid token');
       }
@@ -107,11 +114,15 @@ export class AuthService {
     }
   }
 
-  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.usersService.findById(userId);
-    
+
     const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
-    
+
     if (!isPasswordValid) {
       throw new BadRequestException('Current password is incorrect');
     }

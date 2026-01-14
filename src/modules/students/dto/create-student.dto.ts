@@ -1,14 +1,14 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsOptional, 
-  IsDate, 
-  IsEnum, 
-  IsEmail, 
-  IsArray, 
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsDate,
+  IsEnum,
+  IsEmail,
+  IsArray,
   ValidateNested,
   IsObject,
-  IsMongoId
+  IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';

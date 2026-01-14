@@ -12,7 +12,13 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiParam,
+} from '@nestjs/swagger';
 import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
@@ -136,7 +142,12 @@ export class ClassesController {
     @Body() updateSectionDto: Partial<AddSectionDto>,
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.classesService.updateSection(id, sectionName, updateSectionDto, schoolId);
+    return this.classesService.updateSection(
+      id,
+      sectionName,
+      updateSectionDto,
+      schoolId,
+    );
   }
 
   @Delete(':id/sections/:sectionName')
@@ -162,7 +173,11 @@ export class ClassesController {
     @Body() assignSubjectDto: AssignSubjectDto,
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.classesService.assignSubjects(id, assignSubjectDto.subjectIds, schoolId);
+    return this.classesService.assignSubjects(
+      id,
+      assignSubjectDto.subjectIds,
+      schoolId,
+    );
   }
 
   @Delete(':id/subjects/:subjectId')
@@ -190,7 +205,12 @@ export class ClassesController {
     @Body('teacherId') teacherId: string,
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.classesService.setClassTeacher(id, sectionName, teacherId, schoolId);
+    return this.classesService.setClassTeacher(
+      id,
+      sectionName,
+      teacherId,
+      schoolId,
+    );
   }
 
   @Put(':id/promotion-criteria')

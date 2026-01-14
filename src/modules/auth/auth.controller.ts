@@ -1,4 +1,11 @@
-import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Get,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -13,13 +20,13 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @ApiOperation({ summary:  'User login' })
+  @ApiOperation({ summary: 'User login' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
   @Post('register')
-  @ApiOperation({ summary:  'Register new user (School Admin only)' })
+  @ApiOperation({ summary: 'Register new user (School Admin only)' })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
@@ -41,7 +48,7 @@ export class AuthController {
     return this.authService.changePassword(
       req.user.sub,
       changePasswordDto.oldPassword,
-      changePasswordDto. newPassword,
+      changePasswordDto.newPassword,
     );
   }
 

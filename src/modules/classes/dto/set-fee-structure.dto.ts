@@ -1,4 +1,12 @@
-import { IsNumber, IsArray, IsOptional, ValidateNested, Min, IsString, IsNotEmpty } from 'class-validator';
+import {
+  IsNumber,
+  IsArray,
+  IsOptional,
+  ValidateNested,
+  Min,
+  IsString,
+  IsNotEmpty,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -45,10 +53,10 @@ export class SetFeeStructureDto {
   @Min(0)
   sportsFee: number;
 
-  @ApiPropertyOptional({ 
-    type: [OtherFeeDto], 
+  @ApiPropertyOptional({
+    type: [OtherFeeDto],
     description: 'Array of other fees',
-    example: [{ name: 'Transport Fee', amount: 500 }]
+    example: [{ name: 'Transport Fee', amount: 500 }],
   })
   @IsArray()
   @ValidateNested({ each: true })

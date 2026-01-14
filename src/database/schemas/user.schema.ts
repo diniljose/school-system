@@ -36,7 +36,7 @@ export class User {
   @Prop({ type: Types.ObjectId, refPath: 'profileModel' })
   profile: Types.ObjectId; // Reference to Student/Teacher/Parent profile
 
-  @Prop({ type:  String, enum: ['Student', 'Teacher', 'Parent'] })
+  @Prop({ type: String, enum: ['Student', 'Teacher', 'Parent'] })
   profileModel: string;
 
   @Prop({ default: true })

@@ -5,9 +5,7 @@ import { User, UserDocument } from '../../database/schemas/user.schema';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-  ) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async create(createUserDto: any): Promise<User> {
     const user = new this.userModel(createUserDto);
@@ -31,7 +29,10 @@ export class UsersService {
     return this.userModel.findOne({ email });
   }
 
-  async findByEmailAndSchool(email: string, schoolCode: string): Promise<User | null> {
+  async findByEmailAndSchool(
+    email: string,
+    schoolCode: string,
+  ): Promise<User | null> {
     // For now, just find by email. You can add school lookup logic if needed
     return this.userModel.findOne({ email }).populate('school');
   }
@@ -49,12 +50,10 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: any): Promise<User> {
-    const user = await this.userModel.findByIdAndUpdate(
-      id,
-      { $set: updateUserDto },
-      { new: true },
-    ).select('-password');
-    
+    const user = await this.userModel
+      .findByIdAndUpdate(id, { $set: updateUserDto }, { new: true })
+      .select('-password');
+
     if (!user) {
       throw new NotFoundException('User not found');
     }

@@ -11,7 +11,13 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiParam,
+} from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
@@ -129,7 +135,11 @@ export class TeachersController {
     @Body() qualificationDto: AddQualificationDto,
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.teachersService.addQualification(id, qualificationDto, schoolId);
+    return this.teachersService.addQualification(
+      id,
+      qualificationDto,
+      schoolId,
+    );
   }
 
   @Delete(':id/qualifications/:index')
@@ -143,7 +153,11 @@ export class TeachersController {
     @Param('index') index: string,
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.teachersService.removeQualification(id, parseInt(index, 10), schoolId);
+    return this.teachersService.removeQualification(
+      id,
+      parseInt(index, 10),
+      schoolId,
+    );
   }
 
   @Post(':id/experience')
@@ -169,7 +183,11 @@ export class TeachersController {
     @Param('index') index: string,
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.teachersService.removeExperience(id, parseInt(index, 10), schoolId);
+    return this.teachersService.removeExperience(
+      id,
+      parseInt(index, 10),
+      schoolId,
+    );
   }
 
   @Post(':id/subjects')
@@ -181,7 +199,11 @@ export class TeachersController {
     @Body() assignDto: { subjectIds: string[] },
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.teachersService.assignSubjects(id, assignDto.subjectIds, schoolId);
+    return this.teachersService.assignSubjects(
+      id,
+      assignDto.subjectIds,
+      schoolId,
+    );
   }
 
   @Post(':id/classes')
@@ -193,7 +215,11 @@ export class TeachersController {
     @Body() assignClassDto: AssignClassDto,
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.teachersService.assignClasses(id, assignClassDto.classIds, schoolId);
+    return this.teachersService.assignClasses(
+      id,
+      assignClassDto.classIds,
+      schoolId,
+    );
   }
 
   @Post(':id/set-class-teacher')
@@ -205,7 +231,12 @@ export class TeachersController {
     @Body() body: { classId: string; sectionName: string },
     @CurrentUser('school') schoolId: string,
   ) {
-    return this.teachersService.setAsClassTeacher(id, body.classId, body.sectionName, schoolId);
+    return this.teachersService.setAsClassTeacher(
+      id,
+      body.classId,
+      body.sectionName,
+      schoolId,
+    );
   }
 
   @Get(':id/schedule')

@@ -17,7 +17,10 @@ export class CreateSubjectDto {
   @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ example: 'Core', description: 'Subject type (Core, Elective, etc.)' })
+  @ApiPropertyOptional({
+    example: 'Core',
+    description: 'Subject type (Core, Elective, etc.)',
+  })
   @IsString()
   @IsOptional()
   type?: string;

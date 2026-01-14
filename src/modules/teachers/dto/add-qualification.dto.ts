@@ -7,7 +7,10 @@ export class AddQualificationDto {
   @IsNotEmpty()
   degree: string;
 
-  @ApiProperty({ example: 'University of XYZ', description: 'Institution name' })
+  @ApiProperty({
+    example: 'University of XYZ',
+    description: 'Institution name',
+  })
   @IsString()
   @IsNotEmpty()
   institution: string;

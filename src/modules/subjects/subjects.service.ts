@@ -1,9 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Subject, SubjectDocument } from '../../database/schemas/subject.schema';
+import {
+  Subject,
+  SubjectDocument,
+} from '../../database/schemas/subject.schema';
 import { Class, ClassDocument } from '../../database/schemas/class.schema';
-import { Teacher, TeacherDocument } from '../../database/schemas/teacher.schema';
+import {
+  Teacher,
+  TeacherDocument,
+} from '../../database/schemas/teacher.schema';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 
@@ -22,7 +32,10 @@ export class SubjectsService {
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
   ) {}
 
-  async create(createSubjectDto: CreateSubjectDto, schoolId: string): Promise<Subject> {
+  async create(
+    createSubjectDto: CreateSubjectDto,
+    schoolId: string,
+  ): Promise<Subject> {
     const existing = await this.subjectModel.findOne({
       school: schoolId,
       code: createSubjectDto.code,
@@ -80,11 +93,7 @@ export class SubjectsService {
     const skip = (page - 1) * limit;
 
     const [subjects, total] = await Promise.all([
-      this.subjectModel
-        .find(query)
-        .skip(skip)
-        .limit(limit)
-        .sort({ name: 1 }),
+      this.subjectModel.find(query).skip(skip).limit(limit).sort({ name: 1 }),
       this.subjectModel.countDocuments(query),
     ]);
 
@@ -100,7 +109,10 @@ export class SubjectsService {
   }
 
   async findById(id: string, schoolId: string): Promise<Subject> {
-    const subject = await this.subjectModel.findOne({ _id: id, school: schoolId });
+    const subject = await this.subjectModel.findOne({
+      _id: id,
+      school: schoolId,
+    });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
@@ -109,7 +121,11 @@ export class SubjectsService {
     return subject;
   }
 
-  async update(id: string, updateSubjectDto: UpdateSubjectDto, schoolId: string): Promise<Subject> {
+  async update(
+    id: string,
+    updateSubjectDto: UpdateSubjectDto,
+    schoolId: string,
+  ): Promise<Subject> {
     if (updateSubjectDto.code) {
       const existing = await this.subjectModel.findOne({
         school: schoolId,
@@ -136,15 +152,25 @@ export class SubjectsService {
   }
 
   async delete(id: string, schoolId: string): Promise<void> {
-    const result = await this.subjectModel.deleteOne({ _id: id, school: schoolId });
+    const result = await this.subjectModel.deleteOne({
+      _id: id,
+      school: schoolId,
+    });
 
     if (result.deletedCount === 0) {
       throw new NotFoundException('Subject not found');
     }
   }
 
-  async assignToClass(subjectId: string, classId: string, schoolId: string): Promise<Subject> {
-    const subject = await this.subjectModel.findOne({ _id: subjectId, school: schoolId });
+  async assignToClass(
+    subjectId: string,
+    classId: string,
+    schoolId: string,
+  ): Promise<Subject> {
+    const subject = await this.subjectModel.findOne({
+      _id: subjectId,
+      school: schoolId,
+    });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
@@ -163,8 +189,15 @@ export class SubjectsService {
     return subject;
   }
 
-  async removeFromClass(subjectId: string, classId: string, schoolId: string): Promise<Subject> {
-    const subject = await this.subjectModel.findOne({ _id: subjectId, school: schoolId });
+  async removeFromClass(
+    subjectId: string,
+    classId: string,
+    schoolId: string,
+  ): Promise<Subject> {
+    const subject = await this.subjectModel.findOne({
+      _id: subjectId,
+      school: schoolId,
+    });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
@@ -189,13 +222,19 @@ export class SubjectsService {
     teacherId: string,
     schoolId: string,
   ): Promise<TeacherAssignmentResponse> {
-    const subject = await this.subjectModel.findOne({ _id: subjectId, school: schoolId });
+    const subject = await this.subjectModel.findOne({
+      _id: subjectId,
+      school: schoolId,
+    });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
-    const classEntity = await this.classModel.findOne({ _id: classId, school: schoolId });
+    const classEntity = await this.classModel.findOne({
+      _id: classId,
+      school: schoolId,
+    });
 
     if (!classEntity) {
       throw new NotFoundException('Class not found');
@@ -203,11 +242,11 @@ export class SubjectsService {
 
     const teacher = await this.teacherModel.findOneAndUpdate(
       { _id: teacherId, school: schoolId },
-      { 
-        $addToSet: { 
+      {
+        $addToSet: {
           subjects: new Types.ObjectId(subjectId),
           assignedClasses: new Types.ObjectId(classId),
-        } 
+        },
       },
       { new: true },
     );
@@ -225,7 +264,10 @@ export class SubjectsService {
   }
 
   async getSubjectTeachers(subjectId: string, schoolId: string) {
-    const subject = await this.subjectModel.findOne({ _id: subjectId, school: schoolId });
+    const subject = await this.subjectModel.findOne({
+      _id: subjectId,
+      school: schoolId,
+    });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
@@ -248,7 +290,10 @@ export class SubjectsService {
   }
 
   async getSubjectClasses(subjectId: string, schoolId: string) {
-    const subject = await this.subjectModel.findOne({ _id: subjectId, school: schoolId });
+    const subject = await this.subjectModel.findOne({
+      _id: subjectId,
+      school: schoolId,
+    });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
