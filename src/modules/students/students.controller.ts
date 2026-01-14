@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { SchoolContext } from '../../common/decorators/school-context.decorator';
 import { UserRole } from '../../common/enums/roles.enum';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 import { AssignClassDto } from './dto/assign-class.dto';
@@ -75,4 +76,9 @@ export class StudentsController {
   }
 
   @Get('stats')
-  @Roles(UserRole.SCHOOL_ADMIN,
+  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @ApiOperation({ summary: 'Get student statistics' })
+  async getStats(@SchoolContext() schoolId: string) {
+    return this.studentsService.getStudentStats(schoolId);
+  }
+}

@@ -31,11 +31,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const userId = (user as any)._id || (user as any).id;
+
     // Update last login
-    await this.usersService.updateLastLogin(user._id);
+    await this.usersService.updateLastLogin(userId);
 
     const payload = {
-      sub: user._id,
+      sub: userId,
       email: user.email,
       role: user.role,
       school: user.school,
@@ -44,15 +46,15 @@ export class AuthService {
 
     return {
       user: {
-        id: user._id,
-        email: user. email,
+        id: userId,
+        email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
         school: user.school,
         permissions: user.permissions,
       },
-      accessToken: this.jwtService. sign(payload),
+      accessToken: this.jwtService.sign(payload),
       refreshToken: this.jwtService.sign(payload, { expiresIn: '30d' }),
     };
   }
@@ -64,16 +66,18 @@ export class AuthService {
       throw new BadRequestException('Email already registered');
     }
 
-    const hashedPassword = await bcrypt. hash(registerDto.password, 10);
+    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     
-    const user = await this.usersService. create({
+    const user = await this.usersService.create({
       ...registerDto,
       password: hashedPassword,
     });
 
+    const userId = (user as any)._id || (user as any).id;
+
     return {
       message: 'Registration successful',
-      userId: user._id,
+      userId: userId,
     };
   }
 
@@ -86,8 +90,9 @@ export class AuthService {
         throw new UnauthorizedException('Invalid token');
       }
 
+      const userId = (user as any)._id || (user as any).id;
       const newPayload = {
-        sub: user._id,
+        sub: userId,
         email: user.email,
         role: user.role,
         school: user.school,
@@ -105,7 +110,7 @@ export class AuthService {
   async changePassword(userId: string, oldPassword: string, newPassword: string) {
     const user = await this.usersService.findById(userId);
     
-    const isPasswordValid = await bcrypt. compare(oldPassword, user.password);
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
     
     if (!isPasswordValid) {
       throw new BadRequestException('Current password is incorrect');
