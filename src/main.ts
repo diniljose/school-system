@@ -1,30 +1,41 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { globalSetupValidations, setUpCookies, setupCors, setupHelmets } from './common/secuirities/secuirity';
-import { NestFastifyApplication, FastifyAdapter } from '@nestjs/platform-fastify';
-import { HOST, PORT } from './constants';
-import { Logger } from '@nestjs/common';
-import { AppInfo } from './helpers/app-info';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter({
-      bodyLimit: 20971520,
-    }),
-  );
-
-  //await trackSecurity(app); //very trackcode in middleware
-  await globalSetupValidations(app);
-  //await setupSwagger(app);
-  await setUpCookies(app);
-  try {
-    await Promise.all([setupCors(app), setupHelmets(app)]);
-    await app.listen(PORT, HOST, () => {
-      Logger.debug(`Server ${AppInfo.fullName} listening at http://${HOST}:${PORT}/`, AppInfo.name);
-    });
-  } catch (error) {
-    console.error('Error during bootstrap:', error);
-  }
+  const app = await NestFactory.create(AppModule);
+  
+  // Global prefix
+  app.setGlobalPrefix('api/v1');
+  
+  // Global pipes
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+    transformOptions: { enableImplicitConversion: true },
+  }));
+  
+  // Global filters
+  app.useGlobalFilters(new HttpExceptionFilter());
+  
+  // Global interceptors
+  app.useGlobalInterceptors(new TransformInterceptor());
+  
+  // CORS
+  app.enableCors();
+  
+  // Swagger documentation
+  const config = new DocumentBuilder()
+    .setTitle('School Management System API')
+    .setDescription('Multi-tenant School Management System')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+  
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();
