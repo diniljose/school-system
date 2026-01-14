@@ -91,17 +91,17 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user role' })
   @ApiResponse({ status: 200, description: 'User role updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async updateRole(
-    @Param('id') id: string,
-    @Body('role') role: UserRole,
-  ) {
+  async updateRole(@Param('id') id: string, @Body('role') role: UserRole) {
     return this.usersService.updateRole(id, role);
   }
 
   @Patch(':id/permissions')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Update user permissions' })
-  @ApiResponse({ status: 200, description: 'User permissions updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'User permissions updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
   async updatePermissions(
     @Param('id') id: string,

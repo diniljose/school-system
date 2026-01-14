@@ -15,23 +15,21 @@ import { UserRole } from '../../common/enums/roles.enum';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-  ) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const filter: any = { email: createUserDto.email };
     if (createUserDto.school) {
       filter.school = createUserDto.school;
     }
-    
+
     const existingUser = await this.userModel.findOne(filter);
 
     if (existingUser) {
       throw new ConflictException(
-        createUserDto.school 
-          ? 'User with this email already exists in this school' 
-          : 'User with this email already exists'
+        createUserDto.school
+          ? 'User with this email already exists in this school'
+          : 'User with this email already exists',
       );
     }
 
@@ -136,11 +134,11 @@ export class UsersService {
       .findOne({ email })
       .populate('school')
       .exec();
-    
+
     if (!user || !user.school) {
       return null;
     }
-    
+
     const school = user.school as any;
     return school.code === schoolCode ? user : null;
   }

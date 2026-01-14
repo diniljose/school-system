@@ -4,6 +4,7 @@ import { Strategy } from 'passport-local';
 import { AuthService } from '../auth.service';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../../users/users.service';
+import { UserDocument } from '../../../database/schemas/user.schema';
 
 export interface ValidatedUser {
   id: string;
@@ -11,7 +12,7 @@ export interface ValidatedUser {
   firstName: string;
   lastName: string;
   role: string;
-  school: string;
+  school: string | null;
   permissions: string[];
 }
 
@@ -28,7 +29,11 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(req: any, email: string, password: string): Promise<ValidatedUser> {
+  async validate(
+    req: any,
+    email: string,
+    password: string,
+  ): Promise<ValidatedUser> {
     const schoolCode = req.body?.schoolCode;
 
     const user = await this.usersService.findByEmailAndSchool(
@@ -50,14 +55,16 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const userDoc = user as UserDocument;
+
     return {
-      id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      school: user.school,
-      permissions: user.permissions,
+      id: userDoc._id.toString(),
+      email: userDoc.email,
+      firstName: userDoc.firstName,
+      lastName: userDoc.lastName,
+      role: userDoc.role,
+      school: userDoc.school ? userDoc.school.toString() : null,
+      permissions: userDoc.permissions,
     };
   }
 }
