@@ -20,12 +20,19 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const existingUser = await this.userModel.findOne({
-      email: createUserDto.email,
-    });
+    const filter: any = { email: createUserDto.email };
+    if (createUserDto.school) {
+      filter.school = createUserDto.school;
+    }
+    
+    const existingUser = await this.userModel.findOne(filter);
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException(
+        createUserDto.school 
+          ? 'User with this email already exists in this school' 
+          : 'User with this email already exists'
+      );
     }
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
@@ -125,13 +132,17 @@ export class UsersService {
     email: string,
     schoolCode: string,
   ): Promise<User | null> {
-    return this.userModel
+    const user = await this.userModel
       .findOne({ email })
-      .populate({
-        path: 'school',
-        match: { code: schoolCode },
-      })
+      .populate('school')
       .exec();
+    
+    if (!user || !user.school) {
+      return null;
+    }
+    
+    const school = user.school as any;
+    return school.code === schoolCode ? user : null;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
