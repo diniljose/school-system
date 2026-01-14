@@ -13,11 +13,11 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth. guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles. decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles. enum';
+import { UserRole } from '../../common/enums/roles.enum';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 import { AssignClassDto } from './dto/assign-class.dto';
 
