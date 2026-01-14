@@ -2,13 +2,24 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Subject, SubjectDocument } from '../../database/schemas/subject.schema';
+import { Class, ClassDocument } from '../../database/schemas/class.schema';
+import { Teacher, TeacherDocument } from '../../database/schemas/teacher.schema';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
+
+export interface TeacherAssignmentResponse {
+  message: string;
+  subjectId: string;
+  classId: string;
+  teacherId: string;
+}
 
 @Injectable()
 export class SubjectsService {
   constructor(
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
+    @InjectModel(Class.name) private classModel: Model<ClassDocument>,
+    @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
   ) {}
 
   async create(createSubjectDto: CreateSubjectDto, schoolId: string): Promise<Subject> {
@@ -139,6 +150,16 @@ export class SubjectsService {
       throw new NotFoundException('Subject not found');
     }
 
+    const classEntity = await this.classModel.findOneAndUpdate(
+      { _id: classId, school: schoolId },
+      { $addToSet: { subjects: new Types.ObjectId(subjectId) } },
+      { new: true },
+    );
+
+    if (!classEntity) {
+      throw new NotFoundException('Class not found');
+    }
+
     return subject;
   }
 
@@ -149,6 +170,16 @@ export class SubjectsService {
       throw new NotFoundException('Subject not found');
     }
 
+    const classEntity = await this.classModel.findOneAndUpdate(
+      { _id: classId, school: schoolId },
+      { $pull: { subjects: new Types.ObjectId(subjectId) } },
+      { new: true },
+    );
+
+    if (!classEntity) {
+      throw new NotFoundException('Class not found');
+    }
+
     return subject;
   }
 
@@ -157,11 +188,32 @@ export class SubjectsService {
     classId: string,
     teacherId: string,
     schoolId: string,
-  ): Promise<any> {
+  ): Promise<TeacherAssignmentResponse> {
     const subject = await this.subjectModel.findOne({ _id: subjectId, school: schoolId });
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
+    }
+
+    const classEntity = await this.classModel.findOne({ _id: classId, school: schoolId });
+
+    if (!classEntity) {
+      throw new NotFoundException('Class not found');
+    }
+
+    const teacher = await this.teacherModel.findOneAndUpdate(
+      { _id: teacherId, school: schoolId },
+      { 
+        $addToSet: { 
+          subjects: new Types.ObjectId(subjectId),
+          assignedClasses: new Types.ObjectId(classId),
+        } 
+      },
+      { new: true },
+    );
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
     }
 
     return {
@@ -179,10 +231,19 @@ export class SubjectsService {
       throw new NotFoundException('Subject not found');
     }
 
+    const teachers = await this.teacherModel
+      .find({
+        school: schoolId,
+        subjects: new Types.ObjectId(subjectId),
+        isActive: true,
+      })
+      .select('firstName lastName employeeId designation email')
+      .lean();
+
     return {
       subjectId,
       subject: subject.name,
-      teachers: [],
+      teachers,
     };
   }
 
@@ -193,10 +254,19 @@ export class SubjectsService {
       throw new NotFoundException('Subject not found');
     }
 
+    const classes = await this.classModel
+      .find({
+        school: schoolId,
+        subjects: new Types.ObjectId(subjectId),
+        isActive: true,
+      })
+      .select('name grade description')
+      .lean();
+
     return {
       subjectId,
       subject: subject.name,
-      classes: [],
+      classes,
     };
   }
 }
