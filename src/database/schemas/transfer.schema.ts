@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type TransferDocument = Transfer & Document;
 
-@Schema({ timestamps:  true })
+@Schema({ timestamps: true })
 export class Transfer {
   @Prop({ type: Types.ObjectId, ref: 'Student', required: true })
   student: Types.ObjectId;
@@ -14,7 +14,7 @@ export class Transfer {
   @Prop({ type: Types.ObjectId, ref: 'School' })
   fromSchool: Types.ObjectId;
 
-  @Prop({ type:  Types.ObjectId, ref: 'School' })
+  @Prop({ type: Types.ObjectId, ref: 'School' })
   toSchool: Types.ObjectId;
 
   @Prop()

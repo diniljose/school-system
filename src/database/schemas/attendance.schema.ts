@@ -4,9 +4,9 @@ import { AttendanceStatus } from '../../common/enums/student-status.enum';
 
 export type AttendanceDocument = Attendance & Document;
 
-@Schema({ timestamps:  true })
+@Schema({ timestamps: true })
 export class Attendance {
-  @Prop({ type:  Types.ObjectId, ref: 'School', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'School', required: true })
   school: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'AcademicYear', required: true })
@@ -18,7 +18,7 @@ export class Attendance {
   @Prop({ required: true })
   section: string;
 
-  @Prop({ required:  true })
+  @Prop({ required: true })
   date: Date;
 
   @Prop({ type: [Object], required: true })
@@ -45,5 +45,5 @@ export const AttendanceSchema = SchemaFactory.createForClass(Attendance);
 // Unique index to prevent duplicate attendance for same class/section/date
 AttendanceSchema.index(
   { school: 1, class: 1, section: 1, date: 1, subject: 1 },
-  { unique: true }
+  { unique: true },
 );

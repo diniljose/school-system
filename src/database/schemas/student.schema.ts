@@ -47,7 +47,7 @@ export class Student {
     street: string;
     city: string;
     state: string;
-    country:  string;
+    country: string;
     zipCode: string;
   };
 
@@ -59,7 +59,7 @@ export class Student {
   };
 
   @Prop({ type: Types.ObjectId, ref: 'AcademicYear' })
-  currentAcademicYear: Types. ObjectId;
+  currentAcademicYear: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Class' })
   currentClass: Types.ObjectId;
@@ -73,7 +73,7 @@ export class Student {
   @Prop({ required: true })
   admissionDate: Date;
 
-  @Prop({ type: String, enum: StudentStatus, default:  StudentStatus.ACTIVE })
+  @Prop({ type: String, enum: StudentStatus, default: StudentStatus.ACTIVE })
   status: StudentStatus;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Parent' }] })
@@ -129,6 +129,6 @@ export class Student {
 export const StudentSchema = SchemaFactory.createForClass(Student);
 
 // Compound unique index for admission number per school
-StudentSchema.index({ school: 1, admissionNumber:  1 }, { unique: true });
+StudentSchema.index({ school: 1, admissionNumber: 1 }, { unique: true });
 StudentSchema.index({ school: 1, currentClass: 1 });
 StudentSchema.index({ school: 1, status: 1 });

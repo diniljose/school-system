@@ -1,9 +1,14 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
-import { LoginDto } from './dto/login. dto';
-import { RegisterDto } from './dto/register. dto';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { UserDocument } from '../../database/schemas/user.schema';
 
 @Injectable()
 export class AuthService {
@@ -14,9 +19,12 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const { email, password, schoolCode } = loginDto;
-    
-    const user = await this.usersService.findByEmailAndSchool(email, schoolCode);
-    
+
+    const user = (await this.usersService.findByEmailAndSchool(
+      email,
+      schoolCode,
+    )) as UserDocument;
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -26,16 +34,16 @@ export class AuthService {
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     // Update last login
-    await this.usersService.updateLastLogin(user._id);
+    await this.usersService.updateLastLogin(user._id.toString());
 
     const payload = {
-      sub: user._id,
+      sub: user._id.toString(),
       email: user.email,
       role: user.role,
       school: user.school,
@@ -44,50 +52,52 @@ export class AuthService {
 
     return {
       user: {
-        id: user._id,
-        email: user. email,
+        id: user._id.toString(),
+        email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
         school: user.school,
         permissions: user.permissions,
       },
-      accessToken: this.jwtService. sign(payload),
+      accessToken: this.jwtService.sign(payload),
       refreshToken: this.jwtService.sign(payload, { expiresIn: '30d' }),
     };
   }
 
   async register(registerDto: RegisterDto) {
     const existingUser = await this.usersService.findByEmail(registerDto.email);
-    
+
     if (existingUser) {
       throw new BadRequestException('Email already registered');
     }
 
-    const hashedPassword = await bcrypt. hash(registerDto.password, 10);
-    
-    const user = await this.usersService. create({
+    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+
+    const user = (await this.usersService.create({
       ...registerDto,
       password: hashedPassword,
-    });
+    })) as UserDocument;
 
     return {
       message: 'Registration successful',
-      userId: user._id,
+      userId: user._id.toString(),
     };
   }
 
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken);
-      const user = await this.usersService.findById(payload.sub);
-      
+      const user = (await this.usersService.findById(
+        payload.sub,
+      )) as UserDocument;
+
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Invalid token');
       }
 
       const newPayload = {
-        sub: user._id,
+        sub: user._id.toString(),
         email: user.email,
         role: user.role,
         school: user.school,
@@ -102,11 +112,15 @@ export class AuthService {
     }
   }
 
-  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.usersService.findById(userId);
-    
-    const isPasswordValid = await bcrypt. compare(oldPassword, user.password);
-    
+
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+
     if (!isPasswordValid) {
       throw new BadRequestException('Current password is incorrect');
     }

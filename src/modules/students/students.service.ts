@@ -1,9 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Student, StudentDocument } from '../../database/schemas/student.schema';
+import {
+  Student,
+  StudentDocument,
+} from '../../database/schemas/student.schema';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+import { AssignClassDto } from './dto/assign-class.dto';
+import { QueryStudentDto } from './dto/query-student.dto';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 
 @Injectable()
@@ -12,13 +21,15 @@ export class StudentsService {
     @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
   ) {}
 
-  async create(createStudentDto:  CreateStudentDto, schoolId: string): Promise<Student> {
-    // Generate admission number if not provided
+  async create(
+    createStudentDto: CreateStudentDto,
+    schoolId: string,
+  ): Promise<Student> {
     if (!createStudentDto.admissionNumber) {
-      createStudentDto.admissionNumber = await this.generateAdmissionNumber(schoolId);
+      createStudentDto.admissionNumber =
+        await this.generateAdmissionNumber(schoolId);
     }
 
-    // Check if admission number already exists
     const existing = await this.studentModel.findOne({
       school: schoolId,
       admissionNumber: createStudentDto.admissionNumber,
@@ -36,25 +47,14 @@ export class StudentsService {
     return student.save();
   }
 
-  async findAll(
-    schoolId: string,
-    filters: {
-      classId?: string;
-      section?: string;
-      status?: StudentStatus;
-      academicYearId?: string;
-      search?: string;
-      page?: number;
-      limit?: number;
-    },
-  ) {
-    const query:  any = { school: schoolId };
+  async findAll(schoolId: string, filters: QueryStudentDto) {
+    const query: any = { school: schoolId };
 
     if (filters.classId) {
       query.currentClass = filters.classId;
     }
 
-    if (filters. section) {
+    if (filters.section) {
       query.currentSection = filters.section;
     }
 
@@ -63,12 +63,12 @@ export class StudentsService {
     }
 
     if (filters.academicYearId) {
-      query.currentAcademicYear = filters. academicYearId;
+      query.currentAcademicYear = filters.academicYearId;
     }
 
     if (filters.search) {
       query.$or = [
-        { firstName:  { $regex: filters.search, $options: 'i' } },
+        { firstName: { $regex: filters.search, $options: 'i' } },
         { lastName: { $regex: filters.search, $options: 'i' } },
         { admissionNumber: { $regex: filters.search, $options: 'i' } },
       ];
@@ -80,13 +80,14 @@ export class StudentsService {
 
     const [students, total] = await Promise.all([
       this.studentModel
-        . find(query)
+        .find(query)
         .populate('currentClass', 'name grade')
+        .populate('currentSection')
         .populate('parents', 'firstName lastName phone relationship')
         .skip(skip)
         .limit(limit)
         .sort({ firstName: 1 }),
-      this.studentModel. countDocuments(query),
+      this.studentModel.countDocuments(query),
     ]);
 
     return {
@@ -100,9 +101,9 @@ export class StudentsService {
     };
   }
 
-  async findById(id: string, schoolId:  string): Promise<Student> {
+  async findById(id: string, schoolId: string): Promise<Student> {
     const student = await this.studentModel
-      .findOne({ _id: id, school:  schoolId })
+      .findOne({ _id: id, school: schoolId })
       .populate('currentClass')
       .populate('currentSection')
       .populate('currentAcademicYear')
@@ -116,8 +117,11 @@ export class StudentsService {
     return student;
   }
 
-  async findByAdmissionNumber(admissionNumber:  string, schoolId: string): Promise<Student> {
-    const student = await this.studentModel. findOne({
+  async findByAdmissionNumber(
+    admissionNumber: string,
+    schoolId: string,
+  ): Promise<Student> {
+    const student = await this.studentModel.findOne({
       admissionNumber,
       school: schoolId,
     });
@@ -129,7 +133,11 @@ export class StudentsService {
     return student;
   }
 
-  async update(id: string, updateStudentDto: UpdateStudentDto, schoolId: string): Promise<Student> {
+  async update(
+    id: string,
+    updateStudentDto: UpdateStudentDto,
+    schoolId: string,
+  ): Promise<Student> {
     const student = await this.studentModel.findOneAndUpdate(
       { _id: id, school: schoolId },
       { $set: updateStudentDto },
@@ -143,26 +151,41 @@ export class StudentsService {
     return student;
   }
 
-  async updateStatus(id: string, status:  StudentStatus, schoolId: string): Promise<Student> {
-    return this.update(id, { status } as UpdateStudentDto, schoolId);
+  async remove(id: string, schoolId: string): Promise<Student> {
+    return this.updateStatus(id, StudentStatus.INACTIVE, schoolId);
   }
 
-  async assignToClass(
+  async updateStatus(
+    id: string,
+    status: StudentStatus,
+    schoolId: string,
+  ): Promise<Student> {
+    const student = await this.studentModel.findOneAndUpdate(
+      { _id: id, school: schoolId },
+      { $set: { status } },
+      { new: true },
+    );
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return student;
+  }
+
+  async assignClass(
     studentId: string,
-    classId: string,
-    section: string,
-    rollNumber: string,
-    academicYearId: string,
+    assignClassDto: AssignClassDto,
     schoolId: string,
   ): Promise<Student> {
     const student = await this.studentModel.findOneAndUpdate(
       { _id: studentId, school: schoolId },
       {
         $set: {
-          currentClass: classId,
-          currentSection: section,
-          rollNumber: rollNumber,
-          currentAcademicYear: academicYearId,
+          currentClass: assignClassDto.classId,
+          currentSection: assignClassDto.section,
+          rollNumber: assignClassDto.rollNumber,
+          currentAcademicYear: assignClassDto.academicYearId,
         },
       },
       { new: true },
@@ -173,6 +196,149 @@ export class StudentsService {
     }
 
     return student;
+  }
+
+  async getStatistics(schoolId: string) {
+    const total = await this.studentModel.countDocuments({ school: schoolId });
+    const active = await this.studentModel.countDocuments({
+      school: schoolId,
+      status: StudentStatus.ACTIVE,
+    });
+
+    const statusWise = await this.studentModel.aggregate([
+      { $match: { school: new Types.ObjectId(schoolId) } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const genderWise = await this.studentModel.aggregate([
+      {
+        $match: {
+          school: new Types.ObjectId(schoolId),
+          status: StudentStatus.ACTIVE,
+        },
+      },
+      {
+        $group: {
+          _id: '$gender',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const classWise = await this.studentModel.aggregate([
+      {
+        $match: {
+          school: new Types.ObjectId(schoolId),
+          status: StudentStatus.ACTIVE,
+        },
+      },
+      {
+        $group: {
+          _id: '$currentClass',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'classes',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'classInfo',
+        },
+      },
+      {
+        $unwind: { path: '$classInfo', preserveNullAndEmptyArrays: true },
+      },
+      {
+        $project: {
+          _id: 1,
+          count: 1,
+          className: '$classInfo.name',
+          grade: '$classInfo.grade',
+        },
+      },
+    ]);
+
+    return {
+      total,
+      active,
+      statusWise,
+      genderWise,
+      classWise,
+    };
+  }
+
+  async bulkImport(
+    students: CreateStudentDto[],
+    schoolId: string,
+  ): Promise<{ success: number; failed: number; errors: any[] }> {
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    for (const studentDto of students) {
+      try {
+        await this.create(studentDto, schoolId);
+        results.success++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          student: studentDto,
+          error: error.message,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  async getAcademicHistory(studentId: string, schoolId: string) {
+    const student = await this.studentModel
+      .findOne({ _id: studentId, school: schoolId })
+      .select('academicHistory firstName lastName admissionNumber')
+      .lean();
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return {
+      student: {
+        id: student._id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        admissionNumber: student.admissionNumber,
+      },
+      academicHistory: student.academicHistory || [],
+    };
+  }
+
+  async getTransferHistory(studentId: string, schoolId: string) {
+    const student = await this.studentModel
+      .findOne({ _id: studentId, school: schoolId })
+      .select('transferHistory firstName lastName admissionNumber')
+      .lean();
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return {
+      student: {
+        id: student._id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        admissionNumber: student.admissionNumber,
+      },
+      transferHistory: student.transferHistory || [],
+    };
   }
 
   async addAcademicHistory(
@@ -190,23 +356,9 @@ export class StudentsService {
   ): Promise<Student> {
     return this.studentModel.findByIdAndUpdate(
       studentId,
-      { $push: { academicHistory:  historyEntry } },
+      { $push: { academicHistory: historyEntry } },
       { new: true },
     );
-  }
-
-  async getAcademicHistory(studentId: string, schoolId: string) {
-    const student = await this.studentModel
-      .findOne({ _id: studentId, school: schoolId })
-      .populate('academicHistory. academicYear', 'name')
-      .populate('academicHistory.class', 'name grade')
-      .select('academicHistory');
-
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    return student.academicHistory;
   }
 
   async addTransferHistory(
@@ -223,60 +375,35 @@ export class StudentsService {
   ): Promise<Student> {
     return this.studentModel.findByIdAndUpdate(
       studentId,
-      { $push:  { transferHistory: transferEntry } },
+      { $push: { transferHistory: transferEntry } },
       { new: true },
     );
   }
 
   private async generateAdmissionNumber(schoolId: string): Promise<string> {
     const currentYear = new Date().getFullYear();
-    const count = await this.studentModel.countDocuments({ school: schoolId });
-    return `ADM${currentYear}${String(count + 1).padStart(5, '0')}`;
-  }
+    const prefix = `ADM${currentYear}`;
 
-  async getStudentStats(schoolId: string) {
-    const stats = await this.studentModel. aggregate([
-      { $match:  { school: new Types.ObjectId(schoolId) } },
-      {
-        $group: {
-          _id:  '$status',
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    const lastStudent = await this.studentModel
+      .findOne({
+        school: schoolId,
+        admissionNumber: { $regex: `^${prefix}` },
+      })
+      .sort({ admissionNumber: -1 })
+      .select('admissionNumber')
+      .lean();
 
-    const genderStats = await this.studentModel.aggregate([
-      { $match: { school: new Types.ObjectId(schoolId), status: StudentStatus.ACTIVE } },
-      {
-        $group: {
-          _id: '$gender',
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    let nextNumber = 1;
+    if (lastStudent && lastStudent.admissionNumber) {
+      const lastNumber = parseInt(
+        lastStudent.admissionNumber.replace(prefix, ''),
+        10,
+      );
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
+    }
 
-    const classWiseStats = await this.studentModel.aggregate([
-      { $match: { school: new Types.ObjectId(schoolId), status: StudentStatus.ACTIVE } },
-      {
-        $group:  {
-          _id: '$currentClass',
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $lookup: {
-          from: 'classes',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'classInfo',
-        },
-      },
-    ]);
-
-    return {
-      statusWise: stats,
-      genderWise:  genderStats,
-      classWise: classWiseStats,
-    };
+    return `${prefix}${String(nextNumber).padStart(5, '0')}`;
   }
 }
