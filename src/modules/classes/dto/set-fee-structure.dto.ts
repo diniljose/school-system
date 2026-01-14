@@ -1,9 +1,11 @@
-import { IsNumber, IsArray, IsOptional, ValidateNested, Min } from 'class-validator';
+import { IsNumber, IsArray, IsOptional, ValidateNested, Min, IsString, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class OtherFeeDto {
   @ApiProperty({ example: 'Transport Fee' })
+  @IsString()
+  @IsNotEmpty()
   name: string;
 
   @ApiProperty({ example: 500 })
