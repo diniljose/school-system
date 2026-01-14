@@ -1,9 +1,9 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsMongoId } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AssignClassDto {
   @ApiProperty()
-  @IsString()
+  @IsMongoId()
   @IsNotEmpty()
   classId: string;
 
@@ -18,7 +18,7 @@ export class AssignClassDto {
   rollNumber: string;
 
   @ApiProperty()
-  @IsString()
+  @IsMongoId()
   @IsNotEmpty()
   academicYearId: string;
 }

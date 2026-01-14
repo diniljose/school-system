@@ -7,7 +7,8 @@ import {
   IsEmail, 
   IsArray, 
   ValidateNested,
-  IsObject
+  IsObject,
+  IsMongoId
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -154,17 +155,17 @@ export class CreateStudentDto {
   contact?: ContactDto;
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsMongoId()
   @IsOptional()
   currentAcademicYear?: string;
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsMongoId()
   @IsOptional()
   currentClass?: string;
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsMongoId()
   @IsOptional()
   currentSection?: string;
 
@@ -186,11 +187,12 @@ export class CreateStudentDto {
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
+  @IsMongoId({ each: true })
   @IsOptional()
   parents?: string[];
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsMongoId()
   @IsOptional()
   user?: string;
 
