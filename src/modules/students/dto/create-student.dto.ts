@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
@@ -39,10 +40,52 @@ class AddressDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+=======
+import { 
+  IsString, 
+  IsNotEmpty, 
+  IsOptional, 
+  IsDate, 
+  IsEnum, 
+  IsEmail, 
+  IsArray, 
+  ValidateNested,
+  IsObject
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { StudentStatus } from '../../../common/enums/student-status.enum';
+
+class AddressDto {
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  street?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  country?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+>>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
   zipCode?: string;
 }
 
 class ContactDto {
+<<<<<<< HEAD
   @ApiPropertyOptional()
   @IsOptional()
   @IsEmail()
@@ -56,11 +99,27 @@ class ContactDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+=======
+  @ApiProperty()
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+>>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
   emergencyContact?: string;
 }
 
 class HealthInfoDto {
   @ApiPropertyOptional({ type: [String] })
+<<<<<<< HEAD
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -86,10 +145,35 @@ class HealthInfoDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+=======
+  @IsArray()
+  @IsOptional()
+  allergies?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  medicalConditions?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  medications?: string[];
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  doctorName?: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+>>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
   doctorPhone?: string;
 }
 
 export class CreateStudentDto {
+<<<<<<< HEAD
   @ApiPropertyOptional({ description: 'Auto-generated if not provided' })
   @IsOptional()
   @IsString()
@@ -224,5 +308,135 @@ export class CreateStudentDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsObject()
+=======
+  @ApiProperty({ example: 'ADM001' })
+  @IsString()
+  @IsNotEmpty()
+  admissionNumber: string;
+
+  @ApiProperty({ example: 'John' })
+  @IsString()
+  @IsNotEmpty()
+  firstName: string;
+
+  @ApiProperty({ example: 'Doe' })
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
+
+  @ApiPropertyOptional({ example: 'Michael' })
+  @IsString()
+  @IsOptional()
+  middleName?: string;
+
+  @ApiProperty({ example: '2010-05-15' })
+  @Type(() => Date)
+  @IsDate()
+  @IsNotEmpty()
+  dateOfBirth: Date;
+
+  @ApiProperty({ example: 'Male' })
+  @IsString()
+  @IsNotEmpty()
+  gender: string;
+
+  @ApiPropertyOptional({ example: 'O+' })
+  @IsString()
+  @IsOptional()
+  bloodGroup?: string;
+
+  @ApiPropertyOptional({ example: 'American' })
+  @IsString()
+  @IsOptional()
+  nationality?: string;
+
+  @ApiPropertyOptional({ example: 'Christianity' })
+  @IsString()
+  @IsOptional()
+  religion?: string;
+
+  @ApiPropertyOptional({ example: 'General' })
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/photo.jpg' })
+  @IsString()
+  @IsOptional()
+  photo?: string;
+
+  @ApiPropertyOptional({ type: AddressDto })
+  @ValidateNested()
+  @Type(() => AddressDto)
+  @IsOptional()
+  address?: AddressDto;
+
+  @ApiPropertyOptional({ type: ContactDto })
+  @ValidateNested()
+  @Type(() => ContactDto)
+  @IsOptional()
+  contact?: ContactDto;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  currentAcademicYear?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  currentClass?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  currentSection?: string;
+
+  @ApiPropertyOptional({ example: 'ROLL001' })
+  @IsString()
+  @IsOptional()
+  rollNumber?: string;
+
+  @ApiProperty({ example: '2024-01-15' })
+  @Type(() => Date)
+  @IsDate()
+  @IsNotEmpty()
+  admissionDate: Date;
+
+  @ApiPropertyOptional({ enum: StudentStatus, default: StudentStatus.ACTIVE })
+  @IsEnum(StudentStatus)
+  @IsOptional()
+  status?: StudentStatus;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  parents?: string[];
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  user?: string;
+
+  @ApiPropertyOptional({ example: 'Springfield High School' })
+  @IsString()
+  @IsOptional()
+  previousSchool?: string;
+
+  @ApiPropertyOptional({ example: 'TC001' })
+  @IsString()
+  @IsOptional()
+  previousSchoolTC?: string;
+
+  @ApiPropertyOptional({ type: HealthInfoDto })
+  @ValidateNested()
+  @Type(() => HealthInfoDto)
+  @IsOptional()
+  healthInfo?: HealthInfoDto;
+
+  @ApiPropertyOptional()
+  @IsObject()
+  @IsOptional()
+>>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
   metadata?: Record<string, any>;
 }
