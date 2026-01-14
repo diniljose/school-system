@@ -23,7 +23,7 @@ export class AcademicYear {
   @Prop({ type: [Object], default: [] })
   terms: {
     name: string;
-    startDate:  Date;
+    startDate: Date;
     endDate: Date;
     examStartDate: Date;
     examEndDate: Date;
@@ -42,4 +42,4 @@ export class AcademicYear {
 
 export const AcademicYearSchema = SchemaFactory.createForClass(AcademicYear);
 
-AcademicYearSchema.index({ school: 1, name:  1 }, { unique: true });
+AcademicYearSchema.index({ school: 1, name: 1 }, { unique: true });

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { UserRole } from '../../common/enums/roles. enum';
+import { UserRole } from '../../common/enums/roles.enum';
 
 export type UserDocument = User & Document;
 
@@ -36,7 +36,7 @@ export class User {
   @Prop({ type: Types.ObjectId, refPath: 'profileModel' })
   profile: Types.ObjectId; // Reference to Student/Teacher/Parent profile
 
-  @Prop({ type:  String, enum: ['Student', 'Teacher', 'Parent'] })
+  @Prop({ type: String, enum: ['Student', 'Teacher', 'Parent'] })
   profileModel: string;
 
   @Prop({ default: true })

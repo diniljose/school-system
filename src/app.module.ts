@@ -33,9 +33,9 @@ import { SettingsModule } from './modules/settings/settings.module';
       useNewUrlParser: true,
       useUnifiedTopology: true,
     }),
-    ThrottlerModule. forRoot({ ttl: 60, limit: 100 }),
+    ThrottlerModule.forRoot({ ttl: 60, limit: 100 }),
     ScheduleModule.forRoot(),
-    
+
     // Feature modules
     AuthModule,
     UsersModule,

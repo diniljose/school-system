@@ -1,12 +1,10 @@
-import { ValidationPipe } from "@nestjs/common";
-import { NestFastifyApplication } from "@nestjs/platform-fastify";
+import { ValidationPipe } from '@nestjs/common';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
-import { AppNameLogger } from "../loggers/appName.logger";
-
-
+import { AppNameLogger } from '../loggers/appName.logger';
 
 const whitelist = new Set([
   'http://localhost:4200',
@@ -37,13 +35,12 @@ export async function setupCors(app: NestFastifyApplication) {
   });
 }
 
-
 export async function setupHelmets(app: NestFastifyApplication) {
   await app.register(fastifyHelmet, {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        frameAncestors: ["'self'", 'http://localhost:4200',],
+        frameAncestors: ["'self'", 'http://localhost:4200'],
         scriptSrc: [
           `'self'`,
           `https: 'unsafe-inline'`,

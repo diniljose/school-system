@@ -58,10 +58,18 @@ export class Notification {
   @Prop({ type: String, enum: NotificationType, required: true })
   type: NotificationType;
 
-  @Prop({ type: String, enum: NotificationPriority, default: NotificationPriority.MEDIUM })
+  @Prop({
+    type: String,
+    enum: NotificationPriority,
+    default: NotificationPriority.MEDIUM,
+  })
   priority: NotificationPriority;
 
-  @Prop({ type: String, enum: NotificationStatus, default: NotificationStatus.DRAFT })
+  @Prop({
+    type: String,
+    enum: NotificationStatus,
+    default: NotificationStatus.DRAFT,
+  })
   status: NotificationStatus;
 
   @Prop({ type: String, enum: RecipientType, required: true })

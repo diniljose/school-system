@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type ParentDocument = Parent & Document;
 
-@Schema({ timestamps:  true })
+@Schema({ timestamps: true })
 export class Parent {
   @Prop({ type: Types.ObjectId, ref: 'School', required: true })
   school: Types.ObjectId;
@@ -37,14 +37,14 @@ export class Parent {
     street: string;
     city: string;
     state: string;
-    country:  string;
+    country: string;
     zipCode: string;
   };
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Student' }] })
   children: Types.ObjectId[];
 
-  @Prop({ type:  Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: 'User' })
   user: Types.ObjectId;
 
   @Prop({ default: true })

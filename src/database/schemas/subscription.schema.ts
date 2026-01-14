@@ -27,7 +27,11 @@ export class Subscription {
   @Prop({ type: String, enum: SubscriptionPlan, required: true })
   plan: SubscriptionPlan;
 
-  @Prop({ type: String, enum: SubscriptionStatus, default: SubscriptionStatus.TRIAL })
+  @Prop({
+    type: String,
+    enum: SubscriptionStatus,
+    default: SubscriptionStatus.TRIAL,
+  })
   status: SubscriptionStatus;
 
   @Prop({ required: true })

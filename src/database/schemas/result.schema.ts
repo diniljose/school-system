@@ -22,7 +22,7 @@ export class Result {
 
   @Prop({ type: [Object], required: true })
   subjects: {
-    subject: Types. ObjectId;
+    subject: Types.ObjectId;
     maxMarks: number;
     obtainedMarks: number;
     grade: string;
@@ -54,7 +54,7 @@ export class Result {
   @Prop({ type: Types.ObjectId, ref: 'User' })
   enteredBy: Types.ObjectId;
 
-  @Prop({ type:  Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: 'User' })
   verifiedBy: Types.ObjectId;
 }
 

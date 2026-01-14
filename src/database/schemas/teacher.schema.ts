@@ -11,10 +11,10 @@ export class Teacher {
   @Prop({ required: true })
   employeeId: string;
 
-  @Prop({ required:  true })
+  @Prop({ required: true })
   firstName: string;
 
-  @Prop({ required:  true })
+  @Prop({ required: true })
   lastName: string;
 
   @Prop({ required: true })
@@ -35,7 +35,7 @@ export class Teacher {
   @Prop({ type: Object })
   address: {
     street: string;
-    city:  string;
+    city: string;
     state: string;
     country: string;
     zipCode: string;
@@ -56,7 +56,7 @@ export class Teacher {
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Class' }] })
   assignedClasses: Types.ObjectId[];
 
-  @Prop({ type:  Types.ObjectId, ref: 'Class' })
+  @Prop({ type: Types.ObjectId, ref: 'Class' })
   classTeacherOf: Types.ObjectId; // If class teacher
 
   @Prop({ type: [Object], default: [] })
