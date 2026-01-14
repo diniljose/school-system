@@ -5,6 +5,16 @@ import { AuthService } from '../auth.service';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../../users/users.service';
 
+export interface ValidatedUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  school: string;
+  permissions: string[];
+}
+
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -18,7 +28,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(req: any, email: string, password: string): Promise<any> {
+  async validate(req: any, email: string, password: string): Promise<ValidatedUser> {
     const schoolCode = req.body?.schoolCode;
 
     const user = await this.usersService.findByEmailAndSchool(
