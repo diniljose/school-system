@@ -19,6 +19,8 @@ import { TransfersService } from './transfers.service';
 import { TransferOutDto } from './dto/transfer-out.dto';
 import { TransferInDto } from './dto/transfer-in.dto';
 import { QueryTransferDto } from './dto/query-transfer.dto';
+import { CompleteTransferInDto } from './dto/complete-transfer-in.dto';
+import { UpdateDocumentsDto } from './dto/update-documents.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -103,7 +105,7 @@ export class TransfersController {
   @ApiResponse({ status: 409, description: 'Transfer already completed' })
   async completeTransferIn(
     @Param('id') id: string,
-    @Body() studentData: any,
+    @Body() studentData: CompleteTransferInDto,
     @CurrentUser('id') userId: string,
   ) {
     return this.transfersService.completeTransferIn(id, studentData, userId);
@@ -213,7 +215,7 @@ export class TransfersController {
   @ApiResponse({ status: 404, description: 'Transfer not found' })
   async updateTransferDocuments(
     @Param('id') id: string,
-    @Body() documents: any,
+    @Body() documents: UpdateDocumentsDto,
   ) {
     return this.transfersService.updateTransferDocuments(id, documents);
   }

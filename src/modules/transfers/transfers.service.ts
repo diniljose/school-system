@@ -18,6 +18,7 @@ import { School, SchoolDocument } from '../../database/schemas/school.schema';
 import { Class, ClassDocument } from '../../database/schemas/class.schema';
 import { TransferOutDto } from './dto/transfer-out.dto';
 import { TransferInDto } from './dto/transfer-in.dto';
+import { UpdateDocumentsDto } from './dto/update-documents.dto';
 import { TransferType, TransferStatus } from './dto/query-transfer.dto';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 
@@ -203,7 +204,7 @@ export class TransfersService {
 
   async completeTransferIn(
     transferId: string,
-    studentData: Partial<Student>,
+    studentData: any,
     processedBy: string,
   ) {
     const transfer = await this.transferModel
@@ -230,8 +231,25 @@ export class TransfersService {
     await transfer.save();
 
     const student = await this.studentModel.findById(transfer.student);
-    if (student) {
-      Object.assign(student, studentData);
+    if (student && studentData) {
+      if (studentData.currentClass) {
+        student.currentClass = new Types.ObjectId(studentData.currentClass);
+      }
+      if (studentData.currentSection) {
+        student.currentSection = new Types.ObjectId(studentData.currentSection);
+      }
+      if (studentData.currentAcademicYear) {
+        student.currentAcademicYear = new Types.ObjectId(
+          studentData.currentAcademicYear,
+        );
+      }
+      if (studentData.rollNumber) {
+        student.rollNumber = studentData.rollNumber;
+      }
+      if (studentData.admissionDate) {
+        student.admissionDate = new Date(studentData.admissionDate);
+      }
+
       student.status = StudentStatus.TRANSFERRED_IN;
 
       const schoolName = transfer.fromSchool
@@ -416,7 +434,10 @@ export class TransfersService {
     };
   }
 
-  async updateTransferDocuments(transferId: string, documents: any) {
+  async updateTransferDocuments(
+    transferId: string,
+    documents: UpdateDocumentsDto,
+  ) {
     const transfer = await this.transferModel.findById(transferId);
     if (!transfer) {
       throw new NotFoundException('Transfer not found');
