@@ -8,9 +8,15 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Result, ResultDocument } from '../../database/schemas/result.schema';
 import { Exam, ExamDocument } from '../../database/schemas/exam.schema';
-import { Student, StudentDocument } from '../../database/schemas/student.schema';
+import {
+  Student,
+  StudentDocument,
+} from '../../database/schemas/student.schema';
 import { Class, ClassDocument } from '../../database/schemas/class.schema';
-import { Settings, SettingsDocument } from '../../database/schemas/settings.schema';
+import {
+  Settings,
+  SettingsDocument,
+} from '../../database/schemas/settings.schema';
 import { CreateResultDto } from './dto/create-result.dto';
 import { UpdateResultDto } from './dto/update-result.dto';
 
@@ -24,7 +30,11 @@ export class ResultsService {
     @InjectModel(Settings.name) private settingsModel: Model<SettingsDocument>,
   ) {}
 
-  async create(createResultDto: CreateResultDto, schoolId: string, enteredBy: string) {
+  async create(
+    createResultDto: CreateResultDto,
+    schoolId: string,
+    enteredBy: string,
+  ) {
     try {
       const existingResult = await this.resultModel.findOne({
         school: new Types.ObjectId(schoolId),
@@ -33,7 +43,9 @@ export class ResultsService {
       });
 
       if (existingResult) {
-        throw new ConflictException('Result for this student and exam already exists');
+        throw new ConflictException(
+          'Result for this student and exam already exists',
+        );
       }
 
       const [exam, student] = await Promise.all([
@@ -49,11 +61,20 @@ export class ResultsService {
         throw new NotFoundException('Student not found');
       }
 
-      const totalMarks = createResultDto.subjects.reduce((sum, sub) => sum + sub.maxMarks, 0);
-      const obtainedMarks = createResultDto.subjects.reduce((sum, sub) => sum + sub.obtainedMarks, 0);
-      const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
+      const totalMarks = createResultDto.subjects.reduce(
+        (sum, sub) => sum + sub.maxMarks,
+        0,
+      );
+      const obtainedMarks = createResultDto.subjects.reduce(
+        (sum, sub) => sum + sub.obtainedMarks,
+        0,
+      );
+      const percentage =
+        totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
 
-      const settings = await this.settingsModel.findOne({ school: new Types.ObjectId(schoolId) });
+      const settings = await this.settingsModel.findOne({
+        school: new Types.ObjectId(schoolId),
+      });
       const grade = this.calculateGradeFromPercentage(percentage, settings);
 
       const resultData = {
@@ -63,7 +84,7 @@ export class ResultsService {
         exam: new Types.ObjectId(createResultDto.exam),
         student: new Types.ObjectId(createResultDto.student),
         class: new Types.ObjectId(createResultDto.class),
-        subjects: createResultDto.subjects.map(sub => ({
+        subjects: createResultDto.subjects.map((sub) => ({
           ...sub,
           subject: new Types.ObjectId(sub.subject),
         })),
@@ -79,14 +100,23 @@ export class ResultsService {
 
       return newResult;
     } catch (error) {
-      if (error instanceof ConflictException || error instanceof NotFoundException) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      throw new BadRequestException('Failed to create result: ' + error.message);
+      throw new BadRequestException(
+        'Failed to create result: ' + error.message,
+      );
     }
   }
 
-  async bulkCreate(resultsArray: CreateResultDto[], schoolId: string, enteredBy: string) {
+  async bulkCreate(
+    resultsArray: CreateResultDto[],
+    schoolId: string,
+    enteredBy: string,
+  ) {
     const promises = resultsArray.map(async (resultDto, index) => {
       try {
         const result = await this.create(resultDto, schoolId, enteredBy);
@@ -102,7 +132,7 @@ export class ResultsService {
     });
 
     const results = await Promise.allSettled(promises);
-    
+
     const createdResults = [];
     const errors = [];
 
@@ -133,12 +163,17 @@ export class ResultsService {
     };
   }
 
-  async findAll(examId?: string, classId?: string, schoolId?: string, pagination?: { page: number; limit: number }) {
+  async findAll(
+    examId?: string,
+    classId?: string,
+    schoolId?: string,
+    pagination?: { page: number; limit: number },
+  ) {
     const { page = 1, limit = 20 } = pagination || {};
     const skip = (page - 1) * limit;
 
     const filter: any = {};
-    
+
     if (schoolId) {
       filter.school = new Types.ObjectId(schoolId);
     }
@@ -181,7 +216,10 @@ export class ResultsService {
 
     const result = await this.resultModel
       .findOne({ _id: id, school: new Types.ObjectId(schoolId) })
-      .populate('student', 'firstName lastName admissionNumber rollNumber photo')
+      .populate(
+        'student',
+        'firstName lastName admissionNumber rollNumber photo',
+      )
       .populate('exam', 'name examType startDate endDate')
       .populate('class', 'name grade')
       .populate('academicYear', 'name startDate endDate')
@@ -203,7 +241,7 @@ export class ResultsService {
     }
 
     const filter: any = { student: new Types.ObjectId(studentId) };
-    
+
     if (academicYearId) {
       filter.academicYear = new Types.ObjectId(academicYearId);
     }
@@ -237,16 +275,25 @@ export class ResultsService {
     const updateData: any = { ...updateResultDto };
 
     if (updateResultDto.subjects) {
-      updateData.subjects = updateResultDto.subjects.map(sub => ({
+      updateData.subjects = updateResultDto.subjects.map((sub) => ({
         ...sub,
         subject: new Types.ObjectId(sub.subject),
       }));
 
-      const totalMarks = updateResultDto.subjects.reduce((sum, sub) => sum + sub.maxMarks, 0);
-      const obtainedMarks = updateResultDto.subjects.reduce((sum, sub) => sum + sub.obtainedMarks, 0);
-      const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
+      const totalMarks = updateResultDto.subjects.reduce(
+        (sum, sub) => sum + sub.maxMarks,
+        0,
+      );
+      const obtainedMarks = updateResultDto.subjects.reduce(
+        (sum, sub) => sum + sub.obtainedMarks,
+        0,
+      );
+      const percentage =
+        totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
 
-      const settings = await this.settingsModel.findOne({ school: new Types.ObjectId(schoolId) });
+      const settings = await this.settingsModel.findOne({
+        school: new Types.ObjectId(schoolId),
+      });
       const grade = this.calculateGradeFromPercentage(percentage, settings);
 
       updateData.totalMarks = totalMarks;
@@ -296,13 +343,17 @@ export class ResultsService {
       throw new NotFoundException('Result not found');
     }
 
-    const settings = await this.settingsModel.findOne({ school: result.school });
+    const settings = await this.settingsModel.findOne({
+      school: result.school,
+    });
 
-    result.subjects = result.subjects.map(sub => {
-      const percentage = sub.maxMarks > 0 ? (sub.obtainedMarks / sub.maxMarks) * 100 : 0;
+    result.subjects = result.subjects.map((sub) => {
+      const percentage =
+        sub.maxMarks > 0 ? (sub.obtainedMarks / sub.maxMarks) * 100 : 0;
       const grade = this.calculateGradeFromPercentage(percentage, settings);
-      const isPassed = percentage >= (settings?.examSettings?.passPercentage || 40);
-      
+      const isPassed =
+        percentage >= (settings?.examSettings?.passPercentage || 40);
+
       return {
         ...sub,
         grade,
@@ -310,7 +361,10 @@ export class ResultsService {
       };
     });
 
-    const overallGrade = this.calculateGradeFromPercentage(result.percentage, settings);
+    const overallGrade = this.calculateGradeFromPercentage(
+      result.percentage,
+      settings,
+    );
     result.grade = overallGrade;
 
     await result.save();
@@ -337,7 +391,10 @@ export class ResultsService {
     const bulkOps = [];
 
     for (let i = 0; i < results.length; i++) {
-      if (previousPercentage !== null && results[i].percentage < previousPercentage) {
+      if (
+        previousPercentage !== null &&
+        results[i].percentage < previousPercentage
+      ) {
         currentRank = i + 1;
       }
 
@@ -415,7 +472,10 @@ export class ResultsService {
   }
 
   async getStudentReportCard(studentId: string, academicYearId: string) {
-    if (!Types.ObjectId.isValid(studentId) || !Types.ObjectId.isValid(academicYearId)) {
+    if (
+      !Types.ObjectId.isValid(studentId) ||
+      !Types.ObjectId.isValid(academicYearId)
+    ) {
       throw new BadRequestException('Invalid student or academic year ID');
     }
 
@@ -442,15 +502,14 @@ export class ResultsService {
 
     const overallStats = {
       totalExams: results.length,
-      averagePercentage: results.length > 0
-        ? results.reduce((sum, r) => sum + r.percentage, 0) / results.length
-        : 0,
-      highestPercentage: results.length > 0
-        ? Math.max(...results.map(r => r.percentage))
-        : 0,
-      lowestPercentage: results.length > 0
-        ? Math.min(...results.map(r => r.percentage))
-        : 0,
+      averagePercentage:
+        results.length > 0
+          ? results.reduce((sum, r) => sum + r.percentage, 0) / results.length
+          : 0,
+      highestPercentage:
+        results.length > 0 ? Math.max(...results.map((r) => r.percentage)) : 0,
+      lowestPercentage:
+        results.length > 0 ? Math.min(...results.map((r) => r.percentage)) : 0,
     };
 
     return {
@@ -484,15 +543,17 @@ export class ResultsService {
 
     const statistics = {
       totalStudents: results.length,
-      averagePercentage: results.reduce((sum, r) => sum + r.percentage, 0) / results.length,
-      highestPercentage: Math.max(...results.map(r => r.percentage)),
-      lowestPercentage: Math.min(...results.map(r => r.percentage)),
-      passCount: results.filter(r => 
-        r.subjects.every(s => s.isPassed !== false)
+      averagePercentage:
+        results.reduce((sum, r) => sum + r.percentage, 0) / results.length,
+      highestPercentage: Math.max(...results.map((r) => r.percentage)),
+      lowestPercentage: Math.min(...results.map((r) => r.percentage)),
+      passCount: results.filter((r) =>
+        r.subjects.every((s) => s.isPassed !== false),
       ).length,
     };
 
-    const passPercentage = (statistics.passCount / statistics.totalStudents) * 100;
+    const passPercentage =
+      (statistics.passCount / statistics.totalStudents) * 100;
 
     return {
       results,
@@ -514,7 +575,10 @@ export class ResultsService {
         class: new Types.ObjectId(classId),
         isPublished: true,
       })
-      .populate('student', 'firstName lastName admissionNumber rollNumber photo')
+      .populate(
+        'student',
+        'firstName lastName admissionNumber rollNumber photo',
+      )
       .sort({ percentage: -1 })
       .limit(limit)
       .exec();
@@ -522,8 +586,16 @@ export class ResultsService {
     return topPerformers;
   }
 
-  async getSubjectWiseAnalysis(examId: string, classId: string, subjectId: string) {
-    if (!Types.ObjectId.isValid(examId) || !Types.ObjectId.isValid(classId) || !Types.ObjectId.isValid(subjectId)) {
+  async getSubjectWiseAnalysis(
+    examId: string,
+    classId: string,
+    subjectId: string,
+  ) {
+    if (
+      !Types.ObjectId.isValid(examId) ||
+      !Types.ObjectId.isValid(classId) ||
+      !Types.ObjectId.isValid(subjectId)
+    ) {
       throw new BadRequestException('Invalid exam, class, or subject ID');
     }
 
@@ -536,25 +608,26 @@ export class ResultsService {
       .exec();
 
     const subjectResults = results
-      .map(result => {
+      .map((result) => {
         const subjectData = result.subjects.find(
-          s => s.subject.toString() === subjectId
+          (s) => s.subject.toString() === subjectId,
         );
-        
+
         if (!subjectData) return null;
 
         return {
           student: result.student,
           maxMarks: subjectData.maxMarks,
           obtainedMarks: subjectData.obtainedMarks,
-          percentage: subjectData.maxMarks > 0 
-            ? (subjectData.obtainedMarks / subjectData.maxMarks) * 100 
-            : 0,
+          percentage:
+            subjectData.maxMarks > 0
+              ? (subjectData.obtainedMarks / subjectData.maxMarks) * 100
+              : 0,
           grade: subjectData.grade,
           isPassed: subjectData.isPassed,
         };
       })
-      .filter(r => r !== null);
+      .filter((r) => r !== null);
 
     if (subjectResults.length === 0) {
       return {
@@ -565,11 +638,15 @@ export class ResultsService {
 
     const analysis = {
       totalStudents: subjectResults.length,
-      averageMarks: subjectResults.reduce((sum, r) => sum + r.obtainedMarks, 0) / subjectResults.length,
-      averagePercentage: subjectResults.reduce((sum, r) => sum + r.percentage, 0) / subjectResults.length,
-      highestMarks: Math.max(...subjectResults.map(r => r.obtainedMarks)),
-      lowestMarks: Math.min(...subjectResults.map(r => r.obtainedMarks)),
-      passCount: subjectResults.filter(r => r.isPassed !== false).length,
+      averageMarks:
+        subjectResults.reduce((sum, r) => sum + r.obtainedMarks, 0) /
+        subjectResults.length,
+      averagePercentage:
+        subjectResults.reduce((sum, r) => sum + r.percentage, 0) /
+        subjectResults.length,
+      highestMarks: Math.max(...subjectResults.map((r) => r.obtainedMarks)),
+      lowestMarks: Math.min(...subjectResults.map((r) => r.obtainedMarks)),
+      passCount: subjectResults.filter((r) => r.isPassed !== false).length,
     };
 
     const passPercentage = (analysis.passCount / analysis.totalStudents) * 100;
@@ -595,7 +672,7 @@ export class ResultsService {
       .sort({ 'exam.startDate': 1 })
       .exec();
 
-    const trend = results.map(result => ({
+    const trend = results.map((result) => ({
       exam: result.exam,
       academicYear: result.academicYear,
       percentage: result.percentage,
@@ -612,8 +689,15 @@ export class ResultsService {
     };
   }
 
-  private calculateGradeFromPercentage(percentage: number, settings: SettingsDocument | null): string {
-    if (!settings || !settings.gradingSystem || settings.gradingSystem.length === 0) {
+  private calculateGradeFromPercentage(
+    percentage: number,
+    settings: SettingsDocument | null,
+  ): string {
+    if (
+      !settings ||
+      !settings.gradingSystem ||
+      settings.gradingSystem.length === 0
+    ) {
       if (percentage >= 90) return 'A+';
       if (percentage >= 80) return 'A';
       if (percentage >= 70) return 'B+';
@@ -624,7 +708,7 @@ export class ResultsService {
     }
 
     const gradeEntry = settings.gradingSystem.find(
-      g => percentage >= g.minPercentage && percentage <= g.maxPercentage
+      (g) => percentage >= g.minPercentage && percentage <= g.maxPercentage,
     );
 
     return gradeEntry ? gradeEntry.grade : 'F';

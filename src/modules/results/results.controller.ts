@@ -62,7 +62,11 @@ export class ResultsController {
     @CurrentUser('school') schoolId: string,
     @CurrentUser('id') userId: string,
   ) {
-    return this.resultsService.bulkCreate(bulkResultDto.results, schoolId, userId);
+    return this.resultsService.bulkCreate(
+      bulkResultDto.results,
+      schoolId,
+      userId,
+    );
   }
 
   @Get()
@@ -86,12 +90,10 @@ export class ResultsController {
     @CurrentUser('school') schoolId: string,
     @Query() query: QueryResultDto,
   ) {
-    return this.resultsService.findAll(
-      query.examId,
-      query.classId,
-      schoolId,
-      { page: query.page || 1, limit: query.limit || 20 },
-    );
+    return this.resultsService.findAll(query.examId, query.classId, schoolId, {
+      page: query.page || 1,
+      limit: query.limit || 20,
+    });
   }
 
   @Get(':id')
@@ -226,7 +228,10 @@ export class ResultsController {
   @ApiOperation({ summary: 'Get student report card for an academic year' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
-  @ApiResponse({ status: 200, description: 'Report card retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Report card retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Student not found' })
   async getStudentReportCard(
     @Param('studentId') studentId: string,
@@ -243,10 +248,15 @@ export class ResultsController {
     UserRole.TEACHER,
     UserRole.CLASS_TEACHER,
   )
-  @ApiOperation({ summary: 'Get all results for a class in an exam with statistics' })
+  @ApiOperation({
+    summary: 'Get all results for a class in an exam with statistics',
+  })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
-  @ApiResponse({ status: 200, description: 'Class results retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Class results retrieved successfully',
+  })
   async getClassResults(
     @Param('examId') examId: string,
     @Param('classId') classId: string,
@@ -265,8 +275,16 @@ export class ResultsController {
   @ApiOperation({ summary: 'Get top performers in an exam for a class' })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of top performers (default: 10)' })
-  @ApiResponse({ status: 200, description: 'Top performers retrieved successfully' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of top performers (default: 10)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Top performers retrieved successfully',
+  })
   async getTopPerformers(
     @Param('examId') examId: string,
     @Param('classId') classId: string,
@@ -287,13 +305,20 @@ export class ResultsController {
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
   @ApiParam({ name: 'subjectId', description: 'Subject ID' })
-  @ApiResponse({ status: 200, description: 'Subject analysis retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Subject analysis retrieved successfully',
+  })
   async getSubjectWiseAnalysis(
     @Param('examId') examId: string,
     @Param('classId') classId: string,
     @Param('subjectId') subjectId: string,
   ) {
-    return this.resultsService.getSubjectWiseAnalysis(examId, classId, subjectId);
+    return this.resultsService.getSubjectWiseAnalysis(
+      examId,
+      classId,
+      subjectId,
+    );
   }
 
   @Get('trend/:studentId')
@@ -306,9 +331,14 @@ export class ResultsController {
     UserRole.STUDENT,
     UserRole.PARENT,
   )
-  @ApiOperation({ summary: 'Get performance trend for a student across all exams' })
+  @ApiOperation({
+    summary: 'Get performance trend for a student across all exams',
+  })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
-  @ApiResponse({ status: 200, description: 'Performance trend retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Performance trend retrieved successfully',
+  })
   async getPerformanceTrend(@Param('studentId') studentId: string) {
     return this.resultsService.getPerformanceTrend(studentId);
   }

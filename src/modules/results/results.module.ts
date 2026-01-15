@@ -6,7 +6,10 @@ import { Result, ResultSchema } from '../../database/schemas/result.schema';
 import { Exam, ExamSchema } from '../../database/schemas/exam.schema';
 import { Student, StudentSchema } from '../../database/schemas/student.schema';
 import { Class, ClassSchema } from '../../database/schemas/class.schema';
-import { Settings, SettingsSchema } from '../../database/schemas/settings.schema';
+import {
+  Settings,
+  SettingsSchema,
+} from '../../database/schemas/settings.schema';
 
 @Module({
   imports: [
