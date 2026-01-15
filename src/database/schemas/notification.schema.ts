@@ -55,7 +55,6 @@ export class Notification {
   @Prop({ required: true })
   message: string;
 
-<<<<<<< HEAD
   @Prop({ type: String, enum: NotificationType, required: true })
   type: NotificationType;
 
@@ -87,18 +86,10 @@ export class Notification {
 
   @Prop({ type: [String], default: [] })
   targetSections: string[];
-=======
-  @Prop()
-  type: string;
-
-  @Prop()
-  priority: string;
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   sender: Types.ObjectId;
 
-<<<<<<< HEAD
   @Prop({ type: [Object], default: [] })
   channels: {
     type: string;
@@ -119,16 +110,6 @@ export class Notification {
     status: string;
     error: string;
   }[];
-=======
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
-  recipients: Types.ObjectId[];
-
-  @Prop({ type: [String] })
-  recipientRoles: string[];
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Class' }] })
-  recipientClasses: Types.ObjectId[];
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
 
   @Prop()
   scheduledFor: Date;
@@ -137,7 +118,6 @@ export class Notification {
   sentAt: Date;
 
   @Prop()
-<<<<<<< HEAD
   expiresAt: Date;
 
   @Prop({ type: [String], default: [] })
@@ -181,15 +161,6 @@ export class Notification {
 
   @Prop({ default: true })
   sendInApp: boolean;
-=======
-  status: string;
-
-  @Prop({ type: [String] })
-  channels: string[];
-
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
-  readBy: Types.ObjectId[];
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
 
   @Prop({ type: Object })
   metadata: Record<string, any>;
@@ -197,7 +168,6 @@ export class Notification {
 
 export const NotificationSchema = SchemaFactory.createForClass(Notification);
 
-<<<<<<< HEAD
 NotificationSchema.index({ school: 1, status: 1 });
 NotificationSchema.index({ school: 1, type: 1 });
 NotificationSchema.index({ school: 1, recipientType: 1 });
@@ -206,8 +176,3 @@ NotificationSchema.index({ recipients: 1 });
 NotificationSchema.index({ scheduledFor: 1 });
 NotificationSchema.index({ expiresAt: 1 });
 NotificationSchema.index({ 'delivery.recipient': 1, 'delivery.readAt': 1 });
-=======
-NotificationSchema.index({ school: 1 });
-NotificationSchema.index({ status: 1 });
-NotificationSchema.index({ sentAt: 1 });
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)

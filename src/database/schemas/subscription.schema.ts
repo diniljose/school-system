@@ -40,13 +40,8 @@ export class Subscription {
   @Prop({ required: true })
   endDate: Date;
 
-<<<<<<< HEAD
   @Prop()
   trialEndsAt: Date;
-=======
-  @Prop({ type: [String] })
-  features: string[];
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
 
   @Prop({ type: Object })
   limits: {
@@ -54,7 +49,6 @@ export class Subscription {
     maxTeachers: number;
     maxClasses: number;
     storageGB: number;
-<<<<<<< HEAD
     smsCredits: number;
     emailCredits: number;
   };
@@ -108,34 +102,11 @@ export class Subscription {
 
   @Prop({ type: Object })
   metadata: Record<string, any>;
-=======
-  };
-
-  @Prop({ type: Object })
-  paymentInfo: {
-    amount: number;
-    currency: string;
-    frequency: string;
-    paymentMethod: string;
-    lastPaymentDate: Date;
-    nextPaymentDate: Date;
-  };
-
-  @Prop()
-  trialEndsAt: Date;
-
-  @Prop({ default: true })
-  autoRenew: boolean;
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);
 
-<<<<<<< HEAD
 SubscriptionSchema.index({ school: 1 });
 SubscriptionSchema.index({ status: 1 });
 SubscriptionSchema.index({ endDate: 1 });
 SubscriptionSchema.index({ plan: 1 });
-=======
-SubscriptionSchema.index({ school: 1 }, { unique: true });
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
