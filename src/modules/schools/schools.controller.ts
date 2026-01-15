@@ -38,7 +38,10 @@ export class SchoolsController {
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a new school' })
   @ApiResponse({ status: 201, description: 'School created successfully' })
-  @ApiResponse({ status: 409, description: 'School code or slug already exists' })
+  @ApiResponse({
+    status: 409,
+    description: 'School code or slug already exists',
+  })
   @ApiResponse({ status: 403, description: 'Access denied' })
   create(@Body() createSchoolDto: CreateSchoolDto) {
     return this.schoolsService.create(createSchoolDto);
@@ -54,7 +57,10 @@ export class SchoolsController {
   @Get('stats')
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get school statistics' })
-  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Statistics retrieved successfully',
+  })
   getStatistics() {
     return this.schoolsService.getStatistics();
   }
@@ -72,7 +78,10 @@ export class SchoolsController {
   @ApiOperation({ summary: 'Update school' })
   @ApiResponse({ status: 200, description: 'School updated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
-  @ApiResponse({ status: 409, description: 'School code or slug already exists' })
+  @ApiResponse({
+    status: 409,
+    description: 'School code or slug already exists',
+  })
   update(@Param('id') id: string, @Body() updateSchoolDto: UpdateSchoolDto) {
     return this.schoolsService.update(id, updateSchoolDto);
   }

@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean, IsNumber, Min } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsNumber,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QuerySchoolDto {
@@ -36,7 +42,11 @@ export class QuerySchoolDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Items per page', default: 10, minimum: 1 })
+  @ApiPropertyOptional({
+    description: 'Items per page',
+    default: 10,
+    minimum: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -48,7 +58,11 @@ export class QuerySchoolDto {
   @IsString()
   sortBy?: string = 'createdAt';
 
-  @ApiPropertyOptional({ description: 'Sort order', enum: ['asc', 'desc'], default: 'desc' })
+  @ApiPropertyOptional({
+    description: 'Sort order',
+    enum: ['asc', 'desc'],
+    default: 'desc',
+  })
   @IsOptional()
   @IsString()
   sortOrder?: 'asc' | 'desc' = 'desc';

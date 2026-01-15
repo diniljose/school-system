@@ -1,10 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsString,
-  IsNotEmpty,
-  IsDate,
-  IsOptional,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsDate, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AddTermDto {

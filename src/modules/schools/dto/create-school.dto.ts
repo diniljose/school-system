@@ -17,14 +17,22 @@ import {
 import { Type } from 'class-transformer';
 
 class SettingsDto {
-  @ApiPropertyOptional({ description: 'Academic year start month (1-12)', minimum: 1, maximum: 12 })
+  @ApiPropertyOptional({
+    description: 'Academic year start month (1-12)',
+    minimum: 1,
+    maximum: 12,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(12)
   academicYearStart?: number;
 
-  @ApiPropertyOptional({ description: 'Academic year end month (1-12)', minimum: 1, maximum: 12 })
+  @ApiPropertyOptional({
+    description: 'Academic year end month (1-12)',
+    minimum: 1,
+    maximum: 12,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -61,7 +69,11 @@ class SettingsDto {
   @IsString()
   dateFormat?: string;
 
-  @ApiPropertyOptional({ type: [String], description: 'Working days', example: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Working days',
+    example: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

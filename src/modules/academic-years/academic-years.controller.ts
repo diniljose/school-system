@@ -36,7 +36,10 @@ export class AcademicYearsController {
   @Post()
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Create a new academic year' })
-  @ApiResponse({ status: 201, description: 'Academic year created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Academic year created successfully',
+  })
   @ApiResponse({ status: 404, description: 'School not found' })
   @ApiResponse({ status: 409, description: 'Academic year already exists' })
   create(@Body() createAcademicYearDto: CreateAcademicYearDto) {
@@ -44,15 +47,23 @@ export class AcademicYearsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all academic years with pagination and filters' })
-  @ApiResponse({ status: 200, description: 'Academic years retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get all academic years with pagination and filters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Academic years retrieved successfully',
+  })
   findAll(@Query() query: any) {
     return this.academicYearsService.findAll(query);
   }
 
   @Get('current')
   @ApiOperation({ summary: 'Get current academic year for a school' })
-  @ApiResponse({ status: 200, description: 'Current academic year retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current academic year retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'No current academic year found' })
   getCurrentYear(@Query('schoolId') schoolId: string) {
     return this.academicYearsService.getCurrentYear(schoolId);
@@ -60,7 +71,10 @@ export class AcademicYearsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get academic year by ID' })
-  @ApiResponse({ status: 200, description: 'Academic year retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Academic year retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
   findOne(@Param('id') id: string) {
     return this.academicYearsService.findById(id);
@@ -69,9 +83,15 @@ export class AcademicYearsController {
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update academic year' })
-  @ApiResponse({ status: 200, description: 'Academic year updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Academic year updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
-  @ApiResponse({ status: 409, description: 'Academic year name already exists' })
+  @ApiResponse({
+    status: 409,
+    description: 'Academic year name already exists',
+  })
   update(
     @Param('id') id: string,
     @Body() updateAcademicYearDto: UpdateAcademicYearDto,
@@ -82,7 +102,10 @@ export class AcademicYearsController {
   @Delete(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete academic year' })
-  @ApiResponse({ status: 200, description: 'Academic year deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Academic year deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
   remove(@Param('id') id: string) {
     return this.academicYearsService.remove(id);
@@ -91,12 +114,12 @@ export class AcademicYearsController {
   @Post(':id/set-current')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Set academic year as current' })
-  @ApiResponse({ status: 200, description: 'Academic year set as current successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Academic year set as current successfully',
+  })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
-  setCurrentYear(
-    @Param('id') id: string,
-    @Body('schoolId') schoolId: string,
-  ) {
+  setCurrentYear(@Param('id') id: string, @Body('schoolId') schoolId: string) {
     return this.academicYearsService.setCurrentYear(schoolId, id);
   }
 
@@ -145,7 +168,10 @@ export class AcademicYearsController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update a holiday' })
   @ApiResponse({ status: 200, description: 'Holiday updated successfully' })
-  @ApiResponse({ status: 404, description: 'Academic year or holiday not found' })
+  @ApiResponse({
+    status: 404,
+    description: 'Academic year or holiday not found',
+  })
   updateHoliday(
     @Param('id') id: string,
     @Param('holidayId') holidayId: string,
@@ -162,7 +188,10 @@ export class AcademicYearsController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Remove a holiday' })
   @ApiResponse({ status: 200, description: 'Holiday removed successfully' })
-  @ApiResponse({ status: 404, description: 'Academic year or holiday not found' })
+  @ApiResponse({
+    status: 404,
+    description: 'Academic year or holiday not found',
+  })
   removeHoliday(
     @Param('id') id: string,
     @Param('holidayId') holidayId: string,
