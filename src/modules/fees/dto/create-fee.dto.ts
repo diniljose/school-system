@@ -9,6 +9,7 @@ import {
   IsMongoId,
   IsDateString,
   Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -67,6 +68,7 @@ export class CreateFeeDto {
   @IsNotEmpty()
   @IsNumber()
   @Min(1)
+  @Max(12)
   month: number;
 
   @ApiProperty()
