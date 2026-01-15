@@ -36,7 +36,10 @@ export class SubscriptionsController {
   @Post()
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a new subscription' })
-  @ApiResponse({ status: 201, description: 'Subscription created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Subscription created successfully',
+  })
   @ApiResponse({ status: 404, description: 'School not found' })
   @ApiResponse({ status: 403, description: 'Access denied' })
   create(@Body() createSubscriptionDto: CreateSubscriptionDto) {
@@ -44,15 +47,23 @@ export class SubscriptionsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all subscriptions with pagination and filters' })
-  @ApiResponse({ status: 200, description: 'Subscriptions retrieved successfully' })
+  @ApiOperation({
+    summary: 'Get all subscriptions with pagination and filters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscriptions retrieved successfully',
+  })
   findAll(@Query() query: any) {
     return this.subscriptionsService.findAll(query);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get subscription by ID' })
-  @ApiResponse({ status: 200, description: 'Subscription retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscription retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   findOne(@Param('id') id: string) {
     return this.subscriptionsService.findById(id);
@@ -61,7 +72,10 @@ export class SubscriptionsController {
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update subscription' })
-  @ApiResponse({ status: 200, description: 'Subscription updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscription updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   update(
     @Param('id') id: string,
@@ -73,7 +87,10 @@ export class SubscriptionsController {
   @Delete(':id')
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete subscription' })
-  @ApiResponse({ status: 200, description: 'Subscription deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Subscription deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   remove(@Param('id') id: string) {
     return this.subscriptionsService.remove(id);
@@ -106,7 +123,10 @@ export class SubscriptionsController {
   @Get(':id/usage')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Get subscription usage statistics' })
-  @ApiResponse({ status: 200, description: 'Usage statistics retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Usage statistics retrieved successfully',
+  })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
   getUsageStats(@Param('id') id: string) {
     return this.subscriptionsService.getUsageStats(id);

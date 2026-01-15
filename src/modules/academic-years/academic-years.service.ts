@@ -31,7 +31,7 @@ export class AcademicYearsService {
     const school = await this.schoolModel
       .findById(createAcademicYearDto.school)
       .exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }
@@ -64,7 +64,7 @@ export class AcademicYearsService {
 
   async findAll(query?: any) {
     const { page = 1, limit = 10, schoolId, isCurrent, isActive } = query || {};
-    
+
     const filter: any = {};
 
     if (schoolId) {
@@ -106,7 +106,7 @@ export class AcademicYearsService {
       .findById(id)
       .populate('school')
       .exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
@@ -126,7 +126,7 @@ export class AcademicYearsService {
     updateAcademicYearDto: UpdateAcademicYearDto,
   ): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel.findById(id).exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
@@ -162,13 +162,16 @@ export class AcademicYearsService {
 
   async remove(id: string): Promise<void> {
     const result = await this.academicYearModel.findByIdAndDelete(id).exec();
-    
+
     if (!result) {
       throw new NotFoundException('Academic year not found');
     }
   }
 
-  async setCurrentYear(schoolId: string, yearId: string): Promise<AcademicYear> {
+  async setCurrentYear(
+    schoolId: string,
+    yearId: string,
+  ): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel
       .findOne({ _id: yearId, school: schoolId })
       .exec();
@@ -191,7 +194,9 @@ export class AcademicYearsService {
       .exec();
 
     if (!academicYear) {
-      throw new NotFoundException('No current academic year found for this school');
+      throw new NotFoundException(
+        'No current academic year found for this school',
+      );
     }
 
     return academicYear;
@@ -199,7 +204,7 @@ export class AcademicYearsService {
 
   async addTerm(id: string, addTermDto: AddTermDto): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel.findById(id).exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
@@ -222,7 +227,7 @@ export class AcademicYearsService {
     updateTermDto: AddTermDto,
   ): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel.findById(id).exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
@@ -241,7 +246,7 @@ export class AcademicYearsService {
 
   async removeTerm(id: string, termId: string): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel.findById(id).exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
@@ -263,7 +268,7 @@ export class AcademicYearsService {
     addHolidayDto: AddHolidayDto,
   ): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel.findById(id).exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
@@ -278,7 +283,7 @@ export class AcademicYearsService {
     updateHolidayDto: AddHolidayDto,
   ): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel.findById(id).exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
@@ -297,7 +302,7 @@ export class AcademicYearsService {
 
   async removeHoliday(id: string, holidayId: string): Promise<AcademicYear> {
     const academicYear = await this.academicYearModel.findById(id).exec();
-    
+
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }

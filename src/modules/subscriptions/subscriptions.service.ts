@@ -32,7 +32,7 @@ export class SubscriptionsService {
     const school = await this.schoolModel
       .findById(createSubscriptionDto.school)
       .exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }
@@ -48,7 +48,7 @@ export class SubscriptionsService {
 
   async findAll(query?: any) {
     const { page = 1, limit = 10, status, plan, schoolId } = query || {};
-    
+
     const filter: any = {};
 
     if (status) {
@@ -90,7 +90,7 @@ export class SubscriptionsService {
       .findById(id)
       .populate('school')
       .exec();
-    
+
     if (!subscription) {
       throw new NotFoundException('Subscription not found');
     }
@@ -103,7 +103,7 @@ export class SubscriptionsService {
       .findOne({ school: schoolId })
       .populate('school')
       .exec();
-    
+
     if (!subscription) {
       throw new NotFoundException('Subscription not found for this school');
     }
@@ -129,13 +129,16 @@ export class SubscriptionsService {
 
   async remove(id: string): Promise<void> {
     const result = await this.subscriptionModel.findByIdAndDelete(id).exec();
-    
+
     if (!result) {
       throw new NotFoundException('Subscription not found');
     }
   }
 
-  async changePlan(schoolId: string, changePlanDto: ChangePlanDto): Promise<Subscription> {
+  async changePlan(
+    schoolId: string,
+    changePlanDto: ChangePlanDto,
+  ): Promise<Subscription> {
     const subscription = await this.subscriptionModel
       .findOne({ school: schoolId })
       .exec();
@@ -145,7 +148,7 @@ export class SubscriptionsService {
     }
 
     subscription.plan = changePlanDto.newPlan;
-    
+
     const planLimits = this.getPlanLimits(changePlanDto.newPlan);
     subscription.limits = planLimits;
 
@@ -181,7 +184,7 @@ export class SubscriptionsService {
     if (recordPaymentDto.status === 'completed') {
       subscription.billing.lastPaymentDate = recordPaymentDto.date;
       subscription.billing.lastPaymentAmount = recordPaymentDto.amount;
-      
+
       if (subscription.status === SubscriptionStatus.EXPIRED) {
         subscription.status = SubscriptionStatus.ACTIVE;
       }
@@ -255,12 +258,28 @@ export class SubscriptionsService {
       usage,
       limits,
       percentages: {
-        students: limits.maxStudents > 0 ? (usage.studentsCount / limits.maxStudents) * 100 : 0,
-        teachers: limits.maxTeachers > 0 ? (usage.teachersCount / limits.maxTeachers) * 100 : 0,
-        classes: limits.maxClasses > 0 ? (usage.classesCount / limits.maxClasses) * 100 : 0,
-        storage: limits.storageGB > 0 ? (usage.storageUsedGB / limits.storageGB) * 100 : 0,
-        sms: limits.smsCredits > 0 ? (usage.smsUsed / limits.smsCredits) * 100 : 0,
-        email: limits.emailCredits > 0 ? (usage.emailUsed / limits.emailCredits) * 100 : 0,
+        students:
+          limits.maxStudents > 0
+            ? (usage.studentsCount / limits.maxStudents) * 100
+            : 0,
+        teachers:
+          limits.maxTeachers > 0
+            ? (usage.teachersCount / limits.maxTeachers) * 100
+            : 0,
+        classes:
+          limits.maxClasses > 0
+            ? (usage.classesCount / limits.maxClasses) * 100
+            : 0,
+        storage:
+          limits.storageGB > 0
+            ? (usage.storageUsedGB / limits.storageGB) * 100
+            : 0,
+        sms:
+          limits.smsCredits > 0 ? (usage.smsUsed / limits.smsCredits) * 100 : 0,
+        email:
+          limits.emailCredits > 0
+            ? (usage.emailUsed / limits.emailCredits) * 100
+            : 0,
       },
     };
   }

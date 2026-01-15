@@ -32,7 +32,10 @@ export class RecordPaymentDto {
   @IsString()
   transactionId: string;
 
-  @ApiProperty({ enum: ['completed', 'pending', 'failed'], default: 'completed' })
+  @ApiProperty({
+    enum: ['completed', 'pending', 'failed'],
+    default: 'completed',
+  })
   @IsNotEmpty()
   @IsString()
   status: string;

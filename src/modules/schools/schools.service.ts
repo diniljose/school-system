@@ -45,8 +45,18 @@ export class SchoolsService {
   }
 
   async findAll(query: QuerySchoolDto) {
-    const { page, limit, search, isActive, city, state, country, sortBy, sortOrder } = query;
-    
+    const {
+      page,
+      limit,
+      search,
+      isActive,
+      city,
+      state,
+      country,
+      sortBy,
+      sortOrder,
+    } = query;
+
     const filter: any = {};
 
     if (search) {
@@ -102,7 +112,7 @@ export class SchoolsService {
       .findById(id)
       .populate('subscription')
       .exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }
@@ -115,7 +125,7 @@ export class SchoolsService {
       .findOne({ code })
       .populate('subscription')
       .exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }
@@ -128,7 +138,7 @@ export class SchoolsService {
       .findOne({ slug })
       .populate('subscription')
       .exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }
@@ -169,7 +179,7 @@ export class SchoolsService {
 
   async remove(id: string): Promise<void> {
     const result = await this.schoolModel.findByIdAndDelete(id).exec();
-    
+
     if (!result) {
       throw new NotFoundException('School not found');
     }
@@ -180,7 +190,7 @@ export class SchoolsService {
     updateSettingsDto: UpdateSettingsDto,
   ): Promise<School> {
     const school = await this.schoolModel.findById(id).exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }
@@ -198,7 +208,7 @@ export class SchoolsService {
     updateFeaturesDto: UpdateFeaturesDto,
   ): Promise<School> {
     const school = await this.schoolModel.findById(id).exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }
@@ -217,7 +227,7 @@ export class SchoolsService {
     enabled: boolean,
   ): Promise<School> {
     const school = await this.schoolModel.findById(id).exec();
-    
+
     if (!school) {
       throw new NotFoundException('School not found');
     }

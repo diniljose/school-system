@@ -28,7 +28,6 @@ export class Subject {
   @Prop()
   description: string;
 
-<<<<<<< HEAD
   @Prop({ type: String, enum: SubjectType, required: true })
   type: SubjectType;
 
@@ -94,27 +93,11 @@ export class Subject {
 
   @Prop({ type: Object })
   metadata: Record<string, any>;
-=======
-  @Prop()
-  type: string;
-
-  @Prop()
-  department: string;
-
-  @Prop()
-  credits: number;
-
-  @Prop({ default: true })
-  isActive: boolean;
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);
 
 SubjectSchema.index({ school: 1, code: 1 }, { unique: true });
-<<<<<<< HEAD
 SubjectSchema.index({ school: 1, name: 1 });
 SubjectSchema.index({ school: 1, type: 1 });
 SubjectSchema.index({ school: 1, isActive: 1 });
-=======
->>>>>>> 2e83d9c (Fix import spacing issues and add missing DTOs, guards, and strategies)

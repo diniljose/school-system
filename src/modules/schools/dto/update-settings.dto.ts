@@ -9,14 +9,22 @@ import {
 } from 'class-validator';
 
 export class UpdateSettingsDto {
-  @ApiPropertyOptional({ description: 'Academic year start month (1-12)', minimum: 1, maximum: 12 })
+  @ApiPropertyOptional({
+    description: 'Academic year start month (1-12)',
+    minimum: 1,
+    maximum: 12,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(12)
   academicYearStart?: number;
 
-  @ApiPropertyOptional({ description: 'Academic year end month (1-12)', minimum: 1, maximum: 12 })
+  @ApiPropertyOptional({
+    description: 'Academic year end month (1-12)',
+    minimum: 1,
+    maximum: 12,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)

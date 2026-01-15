@@ -97,7 +97,10 @@ export class CreateSubscriptionDto {
   @IsEnum(SubscriptionPlan)
   plan: SubscriptionPlan;
 
-  @ApiPropertyOptional({ enum: SubscriptionStatus, default: SubscriptionStatus.TRIAL })
+  @ApiPropertyOptional({
+    enum: SubscriptionStatus,
+    default: SubscriptionStatus.TRIAL,
+  })
   @IsOptional()
   @IsEnum(SubscriptionStatus)
   status?: SubscriptionStatus;
