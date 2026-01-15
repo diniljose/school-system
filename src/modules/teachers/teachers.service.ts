@@ -291,9 +291,11 @@ export class TeachersService {
       updateData.$set = { classTeacherOf: classId };
     }
 
-    return this.teacherModel.findByIdAndUpdate(teacherId, updateData, {
-      new: true,
-    });
+    return this.teacherModel.findOneAndUpdate(
+      { _id: teacherId, school: schoolId },
+      updateData,
+      { new: true },
+    );
   }
 
   async removeClass(
@@ -319,9 +321,11 @@ export class TeachersService {
       updateData.$unset = { classTeacherOf: 1 };
     }
 
-    return this.teacherModel.findByIdAndUpdate(teacherId, updateData, {
-      new: true,
-    });
+    return this.teacherModel.findOneAndUpdate(
+      { _id: teacherId, school: schoolId },
+      updateData,
+      { new: true },
+    );
   }
 
   async setAsClassTeacher(
@@ -431,10 +435,12 @@ export class TeachersService {
 
     // Find the last teacher with an employeeId starting with this year's prefix
     // Note: This query uses the compound index (school, employeeId) efficiently
+    // The sort works correctly because we use zero-padded numbers (00001, 00002, etc.)
+    // which sort lexicographically in the same order as numerically
     const lastTeacher = await this.teacherModel
       .findOne({
         school: schoolId,
-        employeeId: { $regex: `^${prefix}`, $options: 'i' },
+        employeeId: { $regex: `^${prefix}` },
       })
       .sort({ employeeId: -1 })
       .select('employeeId')
