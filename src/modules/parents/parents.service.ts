@@ -264,11 +264,10 @@ export class ParentsService {
     }
 
     if (parent.children && parent.children.length > 0) {
-      const childrenIds = parent.children.map((id) => id.toString());
       await this.parentModel.updateMany(
         {
           school: schoolId,
-          children: { $in: childrenIds },
+          children: { $in: parent.children },
           _id: { $ne: parentId },
         },
         { $set: { isPrimary: false } },
