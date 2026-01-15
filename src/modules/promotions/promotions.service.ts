@@ -105,7 +105,7 @@ export class PromotionsService {
 
     attendanceRecords.forEach((record) => {
       const studentRecord = record.records.find(
-        (r: any) => r.student.toString() === studentId,
+        (r) => r.student.toString() === studentId,
       );
       if (studentRecord) {
         totalDays++;
