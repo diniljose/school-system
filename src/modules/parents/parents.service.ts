@@ -148,7 +148,10 @@ export class ParentsService {
       throw new BadRequestException('Invalid parent ID');
     }
 
-    const parent = await this.parentModel.findOne({ _id: id, school: schoolId });
+    const parent = await this.parentModel.findOne({
+      _id: id,
+      school: schoolId,
+    });
 
     if (!parent) {
       throw new NotFoundException('Parent not found');

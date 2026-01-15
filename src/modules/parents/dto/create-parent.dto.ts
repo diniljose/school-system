@@ -67,9 +67,12 @@ export class CreateParentDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsString()
-  @Matches(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, {
-    message: 'Invalid phone number format',
-  })
+  @Matches(
+    /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/,
+    {
+      message: 'Invalid phone number format',
+    },
+  )
   phone: string;
 
   @ApiPropertyOptional()

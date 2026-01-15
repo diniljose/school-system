@@ -2,29 +2,36 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
   IsString,
+  IsEnum,
   IsBoolean,
+  IsMongoId,
   IsNumber,
   Min,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
+import { SubjectType } from '../../../database/schemas/subject.schema';
 
-export class QueryParentDto {
+export class QuerySubjectDto {
+  @ApiPropertyOptional({ enum: SubjectType })
+  @IsOptional()
+  @IsEnum(SubjectType)
+  type?: SubjectType;
+
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
-  relationship?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
+  @Type(() => Boolean)
   isActive?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  isPrimary?: boolean;
+  @IsMongoId()
+  classId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsMongoId()
+  teacherId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

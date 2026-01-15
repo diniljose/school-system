@@ -421,8 +421,7 @@ export class TeachersService {
       }
 
       // Add fractional year based on months
-      const additionalMonths =
-        monthDiff >= 0 ? monthDiff : 12 + monthDiff;
+      const additionalMonths = monthDiff >= 0 ? monthDiff : 12 + monthDiff;
       yearsOfExperience = years + additionalMonths / 12;
       yearsOfExperience = Math.floor(yearsOfExperience * 10) / 10;
     }
