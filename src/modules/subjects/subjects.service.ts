@@ -27,7 +27,10 @@ export class SubjectsService {
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
   ) {}
 
-  async create(createSubjectDto: CreateSubjectDto, schoolId: string) {
+  async create(
+    createSubjectDto: CreateSubjectDto,
+    schoolId: string,
+  ): Promise<Subject> {
     try {
       const existingSubject = await this.subjectModel.findOne({
         school: new Types.ObjectId(schoolId),
@@ -61,7 +64,13 @@ export class SubjectsService {
     }
   }
 
-  async findAll(schoolId: string, query: QuerySubjectDto) {
+  async findAll(
+    schoolId: string,
+    query: QuerySubjectDto,
+  ): Promise<{
+    data: Subject[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
     const {
       type,
       isActive,
@@ -122,7 +131,7 @@ export class SubjectsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<Subject> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -140,7 +149,10 @@ export class SubjectsService {
     return subject;
   }
 
-  async update(id: string, updateSubjectDto: UpdateSubjectDto) {
+  async update(
+    id: string,
+    updateSubjectDto: UpdateSubjectDto,
+  ): Promise<Subject> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -186,7 +198,7 @@ export class SubjectsService {
     return updatedSubject;
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -212,7 +224,10 @@ export class SubjectsService {
     return { message: 'Subject deleted successfully' };
   }
 
-  async assignToClass(subjectId: string, classId: string) {
+  async assignToClass(
+    subjectId: string,
+    classId: string,
+  ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -251,7 +266,10 @@ export class SubjectsService {
     return { message: 'Subject assigned to class successfully' };
   }
 
-  async removeFromClass(subjectId: string, classId: string) {
+  async removeFromClass(
+    subjectId: string,
+    classId: string,
+  ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -277,7 +295,10 @@ export class SubjectsService {
     return { message: 'Subject removed from class successfully' };
   }
 
-  async assignTeacher(subjectId: string, teacherId: string) {
+  async assignTeacher(
+    subjectId: string,
+    teacherId: string,
+  ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -318,7 +339,10 @@ export class SubjectsService {
     return { message: 'Teacher assigned to subject successfully' };
   }
 
-  async removeTeacher(subjectId: string, teacherId: string) {
+  async removeTeacher(
+    subjectId: string,
+    teacherId: string,
+  ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -344,7 +368,7 @@ export class SubjectsService {
     return { message: 'Teacher removed from subject successfully' };
   }
 
-  async getSubjectsByClass(classId: string) {
+  async getSubjectsByClass(classId: string): Promise<Subject[]> {
     if (!Types.ObjectId.isValid(classId)) {
       throw new BadRequestException('Invalid class ID');
     }
@@ -358,7 +382,7 @@ export class SubjectsService {
     return subjects;
   }
 
-  async getSubjectsByTeacher(teacherId: string) {
+  async getSubjectsByTeacher(teacherId: string): Promise<Subject[]> {
     if (!Types.ObjectId.isValid(teacherId)) {
       throw new BadRequestException('Invalid teacher ID');
     }
