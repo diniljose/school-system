@@ -278,7 +278,10 @@ export class TeachersService {
       throw new BadRequestException('Class already assigned to teacher');
     }
 
-    const updateData: any = {
+    const updateData: {
+      $push: { assignedClasses: Types.ObjectId };
+      $set?: { classTeacherOf: Types.ObjectId };
+    } = {
       $push: { assignedClasses: classId },
     };
 
@@ -313,7 +316,10 @@ export class TeachersService {
     }
 
     const classObjectId = new Types.ObjectId(classId);
-    const updateData: any = {
+    const updateData: {
+      $pull: { assignedClasses: Types.ObjectId };
+      $unset?: { classTeacherOf: number };
+    } = {
       $pull: { assignedClasses: classObjectId },
     };
 
@@ -404,8 +410,20 @@ export class TeachersService {
     if (teacher.joiningDate) {
       const today = new Date();
       const joiningDate = new Date(teacher.joiningDate);
-      yearsOfExperience =
-        (today.getTime() - joiningDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
+      // Calculate years more accurately by comparing year/month/day differences
+      let years = today.getFullYear() - joiningDate.getFullYear();
+      const monthDiff = today.getMonth() - joiningDate.getMonth();
+      const dayDiff = today.getDate() - joiningDate.getDate();
+
+      // Adjust if birthday hasn't occurred this year yet
+      if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+        years--;
+      }
+
+      // Add fractional year based on months
+      const additionalMonths =
+        monthDiff >= 0 ? monthDiff : 12 + monthDiff;
+      yearsOfExperience = years + additionalMonths / 12;
       yearsOfExperience = Math.floor(yearsOfExperience * 10) / 10;
     }
 
