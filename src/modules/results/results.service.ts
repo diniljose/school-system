@@ -87,21 +87,43 @@ export class ResultsService {
   }
 
   async bulkCreate(resultsArray: CreateResultDto[], schoolId: string, enteredBy: string) {
+    const promises = resultsArray.map(async (resultDto, index) => {
+      try {
+        const result = await this.create(resultDto, schoolId, enteredBy);
+        return { success: true, result, index };
+      } catch (error) {
+        return {
+          success: false,
+          index,
+          student: resultDto.student,
+          error: error.message,
+        };
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    
     const createdResults = [];
     const errors = [];
 
-    for (let i = 0; i < resultsArray.length; i++) {
-      try {
-        const result = await this.create(resultsArray[i], schoolId, enteredBy);
-        createdResults.push(result);
-      } catch (error) {
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        if (result.value.success) {
+          createdResults.push(result.value.result);
+        } else {
+          errors.push({
+            index: result.value.index,
+            student: result.value.student,
+            error: result.value.error,
+          });
+        }
+      } else {
         errors.push({
-          index: i,
-          student: resultsArray[i].student,
-          error: error.message,
+          index: -1,
+          error: result.reason?.message || 'Unknown error',
         });
       }
-    }
+    });
 
     return {
       success: createdResults.length,
@@ -312,14 +334,25 @@ export class ResultsService {
     let currentRank = 1;
     let previousPercentage: number | null = null;
 
+    const bulkOps = [];
+
     for (let i = 0; i < results.length; i++) {
       if (previousPercentage !== null && results[i].percentage < previousPercentage) {
         currentRank = i + 1;
       }
 
-      results[i].rank = currentRank;
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: results[i]._id },
+          update: { $set: { rank: currentRank } },
+        },
+      });
+
       previousPercentage = results[i].percentage;
-      await results[i].save();
+    }
+
+    if (bulkOps.length > 0) {
+      await this.resultModel.bulkWrite(bulkOps);
     }
 
     return {
@@ -459,11 +492,14 @@ export class ResultsService {
       ).length,
     };
 
-    statistics['passPercentage'] = (statistics.passCount / statistics.totalStudents) * 100;
+    const passPercentage = (statistics.passCount / statistics.totalStudents) * 100;
 
     return {
       results,
-      statistics,
+      statistics: {
+        ...statistics,
+        passPercentage,
+      },
     };
   }
 
@@ -536,11 +572,14 @@ export class ResultsService {
       passCount: subjectResults.filter(r => r.isPassed !== false).length,
     };
 
-    analysis['passPercentage'] = (analysis.passCount / analysis.totalStudents) * 100;
+    const passPercentage = (analysis.passCount / analysis.totalStudents) * 100;
 
     return {
       subjectResults,
-      analysis,
+      analysis: {
+        ...analysis,
+        passPercentage,
+      },
     };
   }
 
