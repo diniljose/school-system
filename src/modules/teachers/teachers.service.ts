@@ -9,6 +9,11 @@ import {
   Teacher,
   TeacherDocument,
 } from '../../database/schemas/teacher.schema';
+import {
+  Subject,
+  SubjectDocument,
+} from '../../database/schemas/subject.schema';
+import { Class, ClassDocument } from '../../database/schemas/class.schema';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
@@ -19,6 +24,8 @@ import { AssignClassDto } from './dto/assign-class.dto';
 export class TeachersService {
   constructor(
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+    @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
+    @InjectModel(Class.name) private classModel: Model<ClassDocument>,
   ) {}
 
   async create(
@@ -207,6 +214,15 @@ export class TeachersService {
 
     const subjectId = new Types.ObjectId(assignSubjectDto.subjectId);
 
+    const subject = await this.subjectModel.findOne({
+      _id: subjectId,
+      school: schoolId,
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found');
+    }
+
     if (teacher.subjects.some((s) => s.equals(subjectId))) {
       throw new BadRequestException('Subject already assigned to teacher');
     }
@@ -248,6 +264,15 @@ export class TeachersService {
     }
 
     const classId = new Types.ObjectId(assignClassDto.classId);
+
+    const classExists = await this.classModel.findOne({
+      _id: classId,
+      school: schoolId,
+    });
+
+    if (!classExists) {
+      throw new NotFoundException('Class not found');
+    }
 
     if (teacher.assignedClasses.some((c) => c.equals(classId))) {
       throw new BadRequestException('Class already assigned to teacher');
@@ -404,10 +429,12 @@ export class TeachersService {
     const currentYear = new Date().getFullYear();
     const prefix = `EMP${currentYear}`;
 
+    // Find the last teacher with an employeeId starting with this year's prefix
+    // Note: This query uses the compound index (school, employeeId) efficiently
     const lastTeacher = await this.teacherModel
       .findOne({
         school: schoolId,
-        employeeId: { $regex: `^${prefix}` },
+        employeeId: { $regex: `^${prefix}`, $options: 'i' },
       })
       .sort({ employeeId: -1 })
       .select('employeeId')
