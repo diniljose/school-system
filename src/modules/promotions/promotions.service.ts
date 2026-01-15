@@ -33,6 +33,14 @@ import {
   AttendanceStatus,
 } from '../../common/enums/student-status.enum';
 
+const DEFAULT_MINIMUM_PERCENTAGE = 40;
+const DEFAULT_MINIMUM_ATTENDANCE = 75;
+const VALID_ATTENDANCE_STATUSES = [
+  AttendanceStatus.PRESENT,
+  AttendanceStatus.LATE,
+  AttendanceStatus.HALF_DAY,
+];
+
 @Injectable()
 export class PromotionsService {
   constructor(
@@ -101,11 +109,7 @@ export class PromotionsService {
       );
       if (studentRecord) {
         totalDays++;
-        if (
-          studentRecord.status === AttendanceStatus.PRESENT ||
-          studentRecord.status === AttendanceStatus.LATE ||
-          studentRecord.status === AttendanceStatus.HALF_DAY
-        ) {
+        if (VALID_ATTENDANCE_STATUSES.includes(studentRecord.status)) {
           presentDays++;
         }
       }
@@ -115,8 +119,8 @@ export class PromotionsService {
       totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
 
     const promotionCriteria = classData.promotionCriteria || {
-      minimumPercentage: 40,
-      minimumAttendance: 75,
+      minimumPercentage: DEFAULT_MINIMUM_PERCENTAGE,
+      minimumAttendance: DEFAULT_MINIMUM_ATTENDANCE,
     };
 
     const isEligible =
@@ -203,6 +207,7 @@ export class PromotionsService {
 
     await this.studentModel.findByIdAndUpdate(dto.studentId, {
       currentClass: new Types.ObjectId(dto.toClass),
+      currentSection: dto.toSection,
       currentAcademicYear: new Types.ObjectId(dto.toAcademicYear),
     });
 
@@ -281,6 +286,7 @@ export class PromotionsService {
       .find({
         school: fromClass.school,
         currentClass: new Types.ObjectId(dto.classId),
+        currentSection: dto.section,
         currentAcademicYear: new Types.ObjectId(dto.fromAcademicYear),
         status: StudentStatus.ACTIVE,
       })
@@ -341,6 +347,7 @@ export class PromotionsService {
 
         await this.studentModel.findByIdAndUpdate(student._id, {
           currentClass: new Types.ObjectId(dto.toClassId),
+          currentSection: dto.toSection,
           currentAcademicYear: new Types.ObjectId(dto.toAcademicYear),
         });
 
@@ -370,6 +377,7 @@ export class PromotionsService {
     const students = await this.studentModel
       .find({
         currentClass: new Types.ObjectId(classId),
+        currentSection: section,
         currentAcademicYear: new Types.ObjectId(academicYearId),
         status: StudentStatus.ACTIVE,
       })
@@ -501,6 +509,7 @@ export class PromotionsService {
 
     await this.studentModel.findByIdAndUpdate(promotion.student, {
       currentClass: promotion.fromClass,
+      currentSection: promotion.fromSection,
       currentAcademicYear: promotion.fromAcademicYear,
     });
 
