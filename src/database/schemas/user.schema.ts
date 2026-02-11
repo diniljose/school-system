@@ -12,7 +12,7 @@ export class User {
   @Prop({ required: true })
   lastName: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   email: string;
 
   @Prop({ required: true })
@@ -26,6 +26,9 @@ export class User {
 
   @Prop({ type: String, enum: UserRole, required: true })
   role: UserRole;
+
+  @Prop({ type: String })
+  roleCode: string; // Code of the custom role from Role collection (e.g., 'senior_teacher')
 
   @Prop({ type: [String], default: [] })
   permissions: string[];
@@ -63,6 +66,6 @@ export class User {
 export const UserSchema = SchemaFactory.createForClass(User);
 
 // Compound indexes
-UserSchema.index({ email: 1, school: 1 });
+UserSchema.index({ email: 1, school: 1 }, { unique: true });
 UserSchema.index({ role: 1, school: 1 });
 UserSchema.index({ school: 1, isActive: 1 });

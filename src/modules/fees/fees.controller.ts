@@ -38,7 +38,7 @@ export class FeesController {
   constructor(private readonly feesService: FeesService) {}
 
   @Post()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Create a new fee' })
   @ApiResponse({ status: 201, description: 'Fee created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -54,7 +54,7 @@ export class FeesController {
   }
 
   @Post('generate')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Generate monthly fees for a class' })
   @ApiResponse({
     status: 201,
@@ -71,7 +71,7 @@ export class FeesController {
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -99,7 +99,7 @@ export class FeesController {
 
   @Get('pending')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -121,7 +121,7 @@ export class FeesController {
 
   @Get('overdue')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -137,7 +137,7 @@ export class FeesController {
 
   @Get('defaulters')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -157,7 +157,7 @@ export class FeesController {
 
   @Get('statistics')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -179,7 +179,7 @@ export class FeesController {
 
   @Get('collection-report')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -206,7 +206,7 @@ export class FeesController {
 
   @Get('student/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -230,7 +230,7 @@ export class FeesController {
 
   @Get('student/:studentId/statement')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -252,9 +252,28 @@ export class FeesController {
     return this.feesService.getStudentFeeStatement(studentId, academicYearId);
   }
 
+  @Get('student/:studentId/payment-history')
+  @Roles(
+    UserRole.PRINCIPAL,
+    UserRole.PRINCIPAL,
+    UserRole.VICE_PRINCIPAL,
+    UserRole.ACCOUNTANT,
+    UserRole.CLASS_TEACHER,
+    UserRole.PARENT,
+  )
+  @ApiOperation({ summary: 'Get payment history for a student' })
+  @ApiParam({ name: 'studentId', description: 'Student ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Payment history retrieved successfully',
+  })
+  async getPaymentHistory(@Param('studentId') studentId: string) {
+    return this.feesService.getPaymentHistory(studentId);
+  }
+
   @Get(':id')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -273,7 +292,7 @@ export class FeesController {
 
   @Get(':id/receipt')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -303,7 +322,7 @@ export class FeesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Update a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Fee updated successfully' })
@@ -321,7 +340,7 @@ export class FeesController {
   }
 
   @Post(':id/payment')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Record a payment for a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({
@@ -339,7 +358,7 @@ export class FeesController {
   }
 
   @Post(':id/discount')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Apply discount to a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Discount applied successfully' })
@@ -356,7 +375,7 @@ export class FeesController {
   }
 
   @Post(':id/fine')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Apply fine to a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Fine applied successfully' })
@@ -370,7 +389,7 @@ export class FeesController {
   }
 
   @Post(':id/waive')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Waive a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Fee waived successfully' })
@@ -380,3 +399,4 @@ export class FeesController {
     return this.feesService.waiveFee(id, reason);
   }
 }
+

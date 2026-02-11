@@ -236,7 +236,7 @@ export class TransfersService {
         student.currentClass = new Types.ObjectId(studentData.currentClass);
       }
       if (studentData.currentSection) {
-        student.currentSection = new Types.ObjectId(studentData.currentSection);
+        student.currentSection = studentData.currentSection;
       }
       if (studentData.currentAcademicYear) {
         student.currentAcademicYear = new Types.ObjectId(

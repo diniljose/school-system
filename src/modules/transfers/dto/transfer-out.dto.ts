@@ -11,38 +11,27 @@ import {
 import { Type } from 'class-transformer';
 
 class DocumentsDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  transferCertificate?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  marksheet?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  characterCertificate?: string;
-
-  @ApiPropertyOptional({ type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  otherDocuments?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsString() transferCertificate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() marksheet?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() characterCertificate?: string;
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() @IsString({ each: true }) otherDocuments?: string[];
 }
 
 export class TransferOutDto {
   @ApiProperty()
   @IsNotEmpty()
-  @IsMongoId()
+  @IsString()
   studentId: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsMongoId()
+  @IsString()
   toSchool?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  fromSchool?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -54,35 +43,24 @@ export class TransferOutDto {
   @IsString()
   externalSchoolAddress?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsDateString()
-  transferDate: string;
+  @ApiPropertyOptional({ description: 'Transfer date (defaults to today if not provided)' })
+  @IsOptional()
+  @IsString()
+  transferDate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsDateString()
+  @IsString()
   effectiveDate?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  reason: string;
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  lastClassAttended?: string;
+  reason?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsDateString()
-  lastAttendanceDate?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  conductCertificate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() lastClassAttended?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() lastAttendanceDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() conductCertificate?: string;
 
   @ApiPropertyOptional({ type: DocumentsDto })
   @IsOptional()
@@ -90,8 +68,5 @@ export class TransferOutDto {
   @Type(() => DocumentsDto)
   documents?: DocumentsDto;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  remarks?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() remarks?: string;
 }

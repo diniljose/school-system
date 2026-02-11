@@ -33,9 +33,27 @@ import { UserRole } from '../../common/enums/roles.enum';
 export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
+  @Post()
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @ApiOperation({ summary: 'Bulk promote students (accepts fromClass/toClass aliases)' })
+  @ApiResponse({ status: 201, description: 'Bulk promotion completed' })
+  async bulkPromoteAlias(
+    @Body() bulkPromoteDto: BulkPromoteDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    // Map frontend aliases to expected fields
+    if (bulkPromoteDto.fromClass && !bulkPromoteDto.classId) {
+      bulkPromoteDto.classId = bulkPromoteDto.fromClass;
+    }
+    if (bulkPromoteDto.toClass && !bulkPromoteDto.toClassId) {
+      bulkPromoteDto.toClassId = bulkPromoteDto.toClass;
+    }
+    return this.promotionsService.bulkPromote(bulkPromoteDto, userId);
+  }
+
   @Post('check-eligibility/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -59,7 +77,7 @@ export class PromotionsController {
   }
 
   @Post('promote')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Promote a student to next class' })
   @ApiResponse({ status: 201, description: 'Student promoted successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -75,7 +93,7 @@ export class PromotionsController {
   }
 
   @Post('retain')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Retain a student in the same class' })
   @ApiResponse({ status: 201, description: 'Student retained successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -87,7 +105,7 @@ export class PromotionsController {
   }
 
   @Post('bulk-promote')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Bulk promote students from a class section' })
   @ApiResponse({
     status: 201,
@@ -107,7 +125,7 @@ export class PromotionsController {
 
   @Post('bulk-check-eligibility')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -138,9 +156,30 @@ export class PromotionsController {
     );
   }
 
+  @Get()
+  @Roles(
+    UserRole.PRINCIPAL,
+    UserRole.PRINCIPAL,
+    UserRole.VICE_PRINCIPAL,
+    UserRole.TEACHER,
+  )
+  @ApiOperation({ summary: 'Get all promotions with pagination' })
+  @ApiResponse({ status: 200, description: 'Promotions retrieved' })
+  async getAllPromotions(
+    @CurrentUser('school') schoolId: string,
+    @Query('academicYearId') academicYearId?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    if (academicYearId) {
+      return this.promotionsService.getPendingPromotions(schoolId, academicYearId);
+    }
+    return { data: [] };
+  }
+
   @Get('history/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -161,7 +200,7 @@ export class PromotionsController {
 
   @Get('pending')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -183,7 +222,7 @@ export class PromotionsController {
   }
 
   @Get('statistics')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({
     summary: 'Get promotion statistics for an academic year',
   })
@@ -203,7 +242,7 @@ export class PromotionsController {
   }
 
   @Delete(':id/undo')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({
     summary: 'Undo a promotion and revert student to previous class',
   })
@@ -218,3 +257,4 @@ export class PromotionsController {
     return this.promotionsService.undoPromotion(id);
   }
 }
+

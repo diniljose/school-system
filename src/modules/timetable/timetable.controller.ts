@@ -37,7 +37,7 @@ export class TimetableController {
   constructor(private readonly timetableService: TimetableService) {}
 
   @Post()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Create a new timetable' })
   @ApiResponse({ status: 201, description: 'Timetable created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -55,7 +55,7 @@ export class TimetableController {
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -82,7 +82,7 @@ export class TimetableController {
 
   @Get(':id')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -101,7 +101,7 @@ export class TimetableController {
 
   @Get('class/:classId/:section')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -124,7 +124,7 @@ export class TimetableController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiResponse({ status: 200, description: 'Timetable updated successfully' })
@@ -145,7 +145,7 @@ export class TimetableController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiResponse({ status: 200, description: 'Timetable deleted successfully' })
@@ -158,7 +158,7 @@ export class TimetableController {
   }
 
   @Post(':id/period')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Add a period to timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiQuery({ name: 'day', required: true, enum: DayOfWeek })
@@ -174,7 +174,7 @@ export class TimetableController {
   }
 
   @Patch(':id/period/:day/:periodIndex')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update a specific period in timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiParam({ name: 'day', enum: DayOfWeek, description: 'Day of week' })
@@ -200,7 +200,7 @@ export class TimetableController {
   }
 
   @Delete(':id/period/:day/:periodIndex')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Remove a period from timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiParam({ name: 'day', enum: DayOfWeek, description: 'Day of week' })
@@ -220,7 +220,7 @@ export class TimetableController {
 
   @Get('teacher/:teacherId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -240,7 +240,7 @@ export class TimetableController {
   }
 
   @Get(':id/conflicts')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Check for conflicts in timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiResponse({
@@ -253,7 +253,7 @@ export class TimetableController {
   }
 
   @Get('available-teachers')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Get available teachers for a specific period' })
   @ApiQuery({ name: 'day', required: true, enum: DayOfWeek })
   @ApiQuery({
@@ -279,7 +279,7 @@ export class TimetableController {
   }
 
   @Get('available-rooms')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Get available rooms for a specific period' })
   @ApiQuery({ name: 'day', required: true, enum: DayOfWeek })
   @ApiQuery({
@@ -300,3 +300,4 @@ export class TimetableController {
     return this.timetableService.getAvailableRooms(day, periodTime, schoolId);
   }
 }
+

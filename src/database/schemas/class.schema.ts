@@ -11,7 +11,7 @@ export class Class {
   @Prop({ required: true })
   name: string; // e.g., "Grade 1", "Class 10"
 
-  @Prop({ required: true })
+  @Prop({ default: 0 })
   grade: number; // Numeric grade level for sorting/promotion
 
   @Prop()

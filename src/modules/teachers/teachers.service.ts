@@ -19,6 +19,13 @@ import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { AssignSubjectDto } from './dto/assign-subject.dto';
 import { AssignClassDto } from './dto/assign-class.dto';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
+
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class TeachersService {
@@ -26,46 +33,123 @@ export class TeachersService {
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  private async getTeacherModel(
+    context?: TenantContext,
+  ): Promise<Model<TeacherDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<TeacherDocument>(
+        context.schoolCode,
+        'Teacher',
+      );
+    }
+    return this.teacherModel;
+  }
+
+  private async getSubjectModel(
+    context?: TenantContext,
+  ): Promise<Model<SubjectDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<SubjectDocument>(
+        context.schoolCode,
+        'Subject',
+      );
+    }
+    return this.subjectModel;
+  }
+
+  private async getClassModel(
+    context?: TenantContext,
+  ): Promise<Model<ClassDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ClassDocument>(
+        context.schoolCode,
+        'Class',
+      );
+    }
+    return this.classModel;
+  }
 
   async create(
     createTeacherDto: CreateTeacherDto,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
+    const teacherModel = await this.getTeacherModel(context);
+
     if (!createTeacherDto.employeeId) {
-      createTeacherDto.employeeId = await this.generateEmployeeId(schoolId);
+      createTeacherDto.employeeId = await this.generateEmployeeId(
+        schoolId,
+        context,
+      );
     }
 
-    const existing = await this.teacherModel.findOne({
-      school: schoolId,
+    const existingQuery: any = {
       employeeId: createTeacherDto.employeeId,
-    });
+      isActive: { $ne: false },
+    };
+    if (!context?.isTenantUser) {
+      existingQuery.school = schoolId;
+    }
+
+    const existing = await teacherModel.findOne(existingQuery);
 
     if (existing) {
       throw new BadRequestException('Employee ID already exists');
     }
 
-    const emailExists = await this.teacherModel.findOne({
-      school: schoolId,
+    const emailQuery: any = {
       email: createTeacherDto.email,
-    });
+      isActive: { $ne: false },
+    };
+    if (!context?.isTenantUser) {
+      emailQuery.school = schoolId;
+    }
+
+    const emailExists = await teacherModel.findOne(emailQuery);
 
     if (emailExists) {
       throw new BadRequestException('Email already exists');
     }
 
-    const teacher = new this.teacherModel({
-      ...createTeacherDto,
-      school: schoolId,
+    // Handle flat 'qualification' field → convert to qualifications array
+    const teacherData: any = { ...createTeacherDto };
+    if (teacherData.qualification && !teacherData.qualifications?.length) {
+      teacherData.qualifications = [
+        {
+          degree: teacherData.qualification,
+          institution: 'N/A',
+          year: new Date().getFullYear(),
+        },
+      ];
+    }
+    delete teacherData.qualification;
+
+    const createData: any = {
+      ...teacherData,
       subjects: [],
       assignedClasses: [],
-    });
+      school: schoolId, // Always set school - required by schema
+    };
+
+    const teacher = new teacherModel(createData);
 
     return teacher.save();
   }
 
-  async findAll(schoolId: string, filters: QueryTeacherDto) {
-    const query: any = { school: schoolId };
+  async findAll(
+    schoolId: string,
+    filters: QueryTeacherDto,
+    context?: TenantContext,
+  ) {
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = {};
+
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
 
     if (filters.department) {
       query.department = filters.department;
@@ -85,6 +169,9 @@ export class TeachersService {
 
     if (filters.isActive !== undefined) {
       query.isActive = filters.isActive;
+    } else {
+      // Default to only active teachers unless explicitly requested all
+      query.isActive = { $ne: false };
     }
 
     if (filters.search) {
@@ -101,7 +188,7 @@ export class TeachersService {
     const skip = (page - 1) * limit;
 
     const [teachers, total] = await Promise.all([
-      this.teacherModel
+      teacherModel
         .find(query)
         .populate('subjects', 'name code')
         .populate('assignedClasses', 'name grade')
@@ -109,7 +196,7 @@ export class TeachersService {
         .skip(skip)
         .limit(limit)
         .sort({ firstName: 1 }),
-      this.teacherModel.countDocuments(query),
+      teacherModel.countDocuments(query),
     ]);
 
     return {
@@ -123,9 +210,19 @@ export class TeachersService {
     };
   }
 
-  async findOne(id: string, schoolId: string): Promise<Teacher> {
-    const teacher = await this.teacherModel
-      .findOne({ _id: id, school: schoolId })
+  async findOne(
+    id: string,
+    schoolId: string,
+    context?: TenantContext,
+  ): Promise<Teacher> {
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { _id: id };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel
+      .findOne(query)
       .populate('subjects', 'name code')
       .populate('assignedClasses', 'name grade')
       .populate('classTeacherOf', 'name grade')
@@ -141,11 +238,15 @@ export class TeachersService {
   async findByEmployeeId(
     employeeId: string,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({
-      employeeId,
-      school: schoolId,
-    });
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { employeeId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(query);
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -158,21 +259,33 @@ export class TeachersService {
     id: string,
     updateTeacherDto: UpdateTeacherDto,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
+    const teacherModel = await this.getTeacherModel(context);
+
     if (updateTeacherDto.email) {
-      const emailExists = await this.teacherModel.findOne({
-        school: schoolId,
+      const emailQuery: any = {
         email: updateTeacherDto.email,
         _id: { $ne: id },
-      });
+      };
+      if (!context?.isTenantUser) {
+        emailQuery.school = schoolId;
+      }
+
+      const emailExists = await teacherModel.findOne(emailQuery);
 
       if (emailExists) {
         throw new BadRequestException('Email already exists');
       }
     }
 
-    const teacher = await this.teacherModel.findOneAndUpdate(
-      { _id: id, school: schoolId },
+    const updateQuery: any = { _id: id };
+    if (!context?.isTenantUser) {
+      updateQuery.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOneAndUpdate(
+      updateQuery,
       { $set: updateTeacherDto },
       { new: true },
     );
@@ -184,9 +297,19 @@ export class TeachersService {
     return teacher;
   }
 
-  async remove(id: string, schoolId: string): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOneAndUpdate(
-      { _id: id, school: schoolId },
+  async remove(
+    id: string,
+    schoolId: string,
+    context?: TenantContext,
+  ): Promise<Teacher> {
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { _id: id };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOneAndUpdate(
+      query,
       { $set: { isActive: false } },
       { new: true },
     );
@@ -202,11 +325,17 @@ export class TeachersService {
     teacherId: string,
     assignSubjectDto: AssignSubjectDto,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({
-      _id: teacherId,
-      school: schoolId,
-    });
+    const teacherModel = await this.getTeacherModel(context);
+    const subjectModel = await this.getSubjectModel(context);
+
+    const teacherQuery: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      teacherQuery.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(teacherQuery);
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -214,10 +343,12 @@ export class TeachersService {
 
     const subjectId = new Types.ObjectId(assignSubjectDto.subjectId);
 
-    const subject = await this.subjectModel.findOne({
-      _id: subjectId,
-      school: schoolId,
-    });
+    const subjectQuery: any = { _id: subjectId };
+    if (!context?.isTenantUser) {
+      subjectQuery.school = schoolId;
+    }
+
+    const subject = await subjectModel.findOne(subjectQuery);
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
@@ -235,9 +366,16 @@ export class TeachersService {
     teacherId: string,
     subjectId: string,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOneAndUpdate(
-      { _id: teacherId, school: schoolId },
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOneAndUpdate(
+      query,
       { $pull: { subjects: new Types.ObjectId(subjectId) } },
       { new: true },
     );
@@ -253,11 +391,17 @@ export class TeachersService {
     teacherId: string,
     assignClassDto: AssignClassDto,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({
-      _id: teacherId,
-      school: schoolId,
-    });
+    const teacherModel = await this.getTeacherModel(context);
+    const classModel = await this.getClassModel(context);
+
+    const teacherQuery: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      teacherQuery.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(teacherQuery);
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -265,10 +409,12 @@ export class TeachersService {
 
     const classId = new Types.ObjectId(assignClassDto.classId);
 
-    const classExists = await this.classModel.findOne({
-      _id: classId,
-      school: schoolId,
-    });
+    const classQuery: any = { _id: classId };
+    if (!context?.isTenantUser) {
+      classQuery.school = schoolId;
+    }
+
+    const classExists = await classModel.findOne(classQuery);
 
     if (!classExists) {
       throw new NotFoundException('Class not found');
@@ -294,22 +440,24 @@ export class TeachersService {
       updateData.$set = { classTeacherOf: classId };
     }
 
-    return this.teacherModel.findOneAndUpdate(
-      { _id: teacherId, school: schoolId },
-      updateData,
-      { new: true },
-    );
+    return teacherModel.findOneAndUpdate(teacherQuery, updateData, {
+      new: true,
+    });
   }
 
   async removeClass(
     teacherId: string,
     classId: string,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({
-      _id: teacherId,
-      school: schoolId,
-    });
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(query);
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -327,22 +475,22 @@ export class TeachersService {
       updateData.$unset = { classTeacherOf: 1 };
     }
 
-    return this.teacherModel.findOneAndUpdate(
-      { _id: teacherId, school: schoolId },
-      updateData,
-      { new: true },
-    );
+    return teacherModel.findOneAndUpdate(query, updateData, { new: true });
   }
 
   async setAsClassTeacher(
     teacherId: string,
     classId: string,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Teacher> {
-    const teacher = await this.teacherModel.findOne({
-      _id: teacherId,
-      school: schoolId,
-    });
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(query);
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -366,9 +514,19 @@ export class TeachersService {
     return teacher.save();
   }
 
-  async getSchedule(teacherId: string, schoolId: string) {
-    const teacher = await this.teacherModel
-      .findOne({ _id: teacherId, school: schoolId })
+  async getSchedule(
+    teacherId: string,
+    schoolId: string,
+    context?: TenantContext,
+  ) {
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel
+      .findOne(query)
       .populate('subjects', 'name code')
       .populate('assignedClasses', 'name grade')
       .populate('classTeacherOf', 'name grade')
@@ -391,10 +549,18 @@ export class TeachersService {
     };
   }
 
-  async getStatistics(teacherId: string, schoolId: string) {
-    const teacher = await this.teacherModel
-      .findOne({ _id: teacherId, school: schoolId })
-      .lean();
+  async getStatistics(
+    teacherId: string,
+    schoolId: string,
+    context?: TenantContext,
+  ) {
+    const teacherModel = await this.getTeacherModel(context);
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(query).lean();
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
@@ -446,7 +612,171 @@ export class TeachersService {
     };
   }
 
-  private async generateEmployeeId(schoolId: string): Promise<string> {
+  /**
+   * Assign a teacher to teach a specific subject in a specific class and sections
+   */
+  async assignSubjectToClass(
+    teacherId: string,
+    dto: { subjectId: string; classId: string; sections: string[] },
+    schoolId: string,
+    context?: TenantContext,
+  ): Promise<Teacher> {
+    const teacherModel = await this.getTeacherModel(context);
+    const subjectModel = await this.getSubjectModel(context);
+    const classModel = await this.getClassModel(context);
+
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(query);
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    // Verify subject exists
+    const subjectQuery: any = { _id: dto.subjectId };
+    if (!context?.isTenantUser) {
+      subjectQuery.school = schoolId;
+    }
+    const subject = await subjectModel.findOne(subjectQuery);
+    if (!subject) {
+      throw new NotFoundException('Subject not found');
+    }
+
+    // Verify class exists
+    const classQuery: any = { _id: dto.classId };
+    if (!context?.isTenantUser) {
+      classQuery.school = schoolId;
+    }
+    const classEntity = await classModel.findOne(classQuery);
+    if (!classEntity) {
+      throw new NotFoundException('Class not found');
+    }
+
+    // Initialize subjectAssignments if not exists
+    if (!teacher.subjectAssignments) {
+      teacher.subjectAssignments = [];
+    }
+
+    // Check if assignment already exists
+    const existingIndex = teacher.subjectAssignments.findIndex(
+      (a: any) => a.subject?.toString() === dto.subjectId && a.class?.toString() === dto.classId
+    );
+
+    if (existingIndex >= 0) {
+      // Update existing assignment with new sections (merge)
+      const existing = teacher.subjectAssignments[existingIndex] as any;
+      const allSections = [...new Set([...existing.sections, ...dto.sections])];
+      teacher.subjectAssignments[existingIndex] = {
+        subject: new Types.ObjectId(dto.subjectId),
+        class: new Types.ObjectId(dto.classId),
+        sections: allSections,
+      };
+    } else {
+      // Add new assignment
+      teacher.subjectAssignments.push({
+        subject: new Types.ObjectId(dto.subjectId),
+        class: new Types.ObjectId(dto.classId),
+        sections: dto.sections,
+      });
+    }
+
+    // Also add to subjects array if not already present
+    const subjectObjectId = new Types.ObjectId(dto.subjectId);
+    if (!teacher.subjects.some((s) => s.equals(subjectObjectId))) {
+      teacher.subjects.push(subjectObjectId);
+    }
+
+    // Also add to assignedClasses if not already present
+    const classObjectId = new Types.ObjectId(dto.classId);
+    if (!teacher.assignedClasses.some((c) => c.equals(classObjectId))) {
+      teacher.assignedClasses.push(classObjectId);
+    }
+
+    return teacher.save();
+  }
+
+  /**
+   * Remove a subject-class assignment from teacher
+   */
+  async removeSubjectFromClass(
+    teacherId: string,
+    dto: { subjectId: string; classId: string },
+    schoolId: string,
+    context?: TenantContext,
+  ): Promise<Teacher> {
+    const teacherModel = await this.getTeacherModel(context);
+
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel.findOne(query);
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    if (!teacher.subjectAssignments) {
+      throw new BadRequestException('No subject assignments found');
+    }
+
+    const initialLength = teacher.subjectAssignments.length;
+    teacher.subjectAssignments = teacher.subjectAssignments.filter(
+      (a: any) => !(a.subject?.toString() === dto.subjectId && a.class?.toString() === dto.classId)
+    );
+
+    if (teacher.subjectAssignments.length === initialLength) {
+      throw new NotFoundException('Subject-class assignment not found');
+    }
+
+    return teacher.save();
+  }
+
+  /**
+   * Get all subject-class assignments for a teacher with populated data
+   */
+  async getSubjectClassAssignments(
+    teacherId: string,
+    schoolId: string,
+    context?: TenantContext,
+  ) {
+    const teacherModel = await this.getTeacherModel(context);
+
+    const query: any = { _id: teacherId };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const teacher = await teacherModel
+      .findOne(query)
+      .populate({
+        path: 'subjectAssignments.subject',
+        select: 'name code',
+      })
+      .populate({
+        path: 'subjectAssignments.class',
+        select: 'name grade',
+      });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    return {
+      teacherId: teacher._id,
+      teacherName: `${teacher.firstName} ${teacher.lastName}`,
+      assignments: teacher.subjectAssignments || [],
+    };
+  }
+
+  private async generateEmployeeId(
+    schoolId: string,
+    context?: TenantContext,
+  ): Promise<string> {
+    const teacherModel = await this.getTeacherModel(context);
     const currentYear = new Date().getFullYear();
     const prefix = `EMP${currentYear}`;
 
@@ -454,11 +784,13 @@ export class TeachersService {
     // Note: This query uses the compound index (school, employeeId) efficiently
     // The sort works correctly because we use zero-padded numbers (00001, 00002, etc.)
     // which sort lexicographically in the same order as numerically
-    const lastTeacher = await this.teacherModel
-      .findOne({
-        school: schoolId,
-        employeeId: { $regex: `^${prefix}` },
-      })
+    const query: any = { employeeId: { $regex: `^${prefix}` } };
+    if (!context?.isTenantUser) {
+      query.school = schoolId;
+    }
+
+    const lastTeacher = await teacherModel
+      .findOne(query)
       .sort({ employeeId: -1 })
       .select('employeeId')
       .lean();

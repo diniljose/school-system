@@ -8,7 +8,9 @@ import {
   Delete,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -36,7 +38,7 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
   @ApiOperation({
     summary: 'Create new student with auto-generated admission number',
   })
@@ -44,13 +46,17 @@ export class StudentsController {
   async create(
     @Body() createStudentDto: CreateStudentDto,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.create(createStudentDto, schoolId);
+    return this.studentsService.create(createStudentDto, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -68,24 +74,34 @@ export class StudentsController {
   async findAll(
     @CurrentUser('school') schoolId: string,
     @Query() query: QueryStudentDto,
+    @Req() req: Request,
   ) {
-    return this.studentsService.findAll(schoolId, query);
+    return this.studentsService.findAll(schoolId, query, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get('stats')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Get student statistics' })
   @ApiResponse({
     status: 200,
     description: 'Statistics retrieved successfully',
   })
-  async getStatistics(@CurrentUser('school') schoolId: string) {
-    return this.studentsService.getStatistics(schoolId);
+  async getStatistics(
+    @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.getStatistics(schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get(':id')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -97,12 +113,16 @@ export class StudentsController {
   async findOne(
     @Param('id') id: string,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.findById(id, schoolId);
+    return this.studentsService.findById(id, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Patch(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Update student details' })
   @ApiResponse({ status: 200, description: 'Student updated successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -110,35 +130,47 @@ export class StudentsController {
     @Param('id') id: string,
     @Body() updateStudentDto: UpdateStudentDto,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.update(id, updateStudentDto, schoolId);
+    return this.studentsService.update(id, updateStudentDto, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Delete(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete student (soft delete)' })
   @ApiResponse({ status: 200, description: 'Student deleted successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
   async remove(
     @Param('id') id: string,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.remove(id, schoolId);
+    return this.studentsService.remove(id, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Post('bulk')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Bulk import students' })
   @ApiResponse({ status: 201, description: 'Students imported successfully' })
   async bulkImport(
     @Body() students: CreateStudentDto[],
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.bulkImport(students, schoolId);
+    return this.studentsService.bulkImport(students, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Patch(':id/assign-class')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Assign student to class and section' })
   @ApiResponse({ status: 200, description: 'Student assigned successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -146,13 +178,17 @@ export class StudentsController {
     @Param('id') id: string,
     @Body() assignClassDto: AssignClassDto,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.assignClass(id, assignClassDto, schoolId);
+    return this.studentsService.assignClass(id, assignClassDto, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get(':id/academic-history')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -167,12 +203,16 @@ export class StudentsController {
   async getAcademicHistory(
     @Param('id') id: string,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.getAcademicHistory(id, schoolId);
+    return this.studentsService.getAcademicHistory(id, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get(':id/transfer-history')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Get student transfer history' })
   @ApiResponse({
     status: 200,
@@ -182,12 +222,16 @@ export class StudentsController {
   async getTransferHistory(
     @Param('id') id: string,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.getTransferHistory(id, schoolId);
+    return this.studentsService.getTransferHistory(id, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Patch(':id/status')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update student status' })
   @ApiResponse({ status: 200, description: 'Status updated successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -195,7 +239,12 @@ export class StudentsController {
     @Param('id') id: string,
     @Body('status') status: StudentStatus,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.studentsService.updateStatus(id, status, schoolId);
+    return this.studentsService.updateStatus(id, status, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 }
+

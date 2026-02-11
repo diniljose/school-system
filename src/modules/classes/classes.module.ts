@@ -6,9 +6,11 @@ import { Class, ClassSchema } from '../../database/schemas/class.schema';
 import { Student, StudentSchema } from '../../database/schemas/student.schema';
 import { Teacher, TeacherSchema } from '../../database/schemas/teacher.schema';
 import { Subject, SubjectSchema } from '../../database/schemas/subject.schema';
+import { DatabaseModule } from '../../database/database/database.module';
 
 @Module({
   imports: [
+    DatabaseModule,
     MongooseModule.forFeature([
       { name: Class.name, schema: ClassSchema },
       { name: Student.name, schema: StudentSchema },

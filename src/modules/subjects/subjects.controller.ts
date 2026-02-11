@@ -8,7 +8,9 @@ import {
   Delete,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -35,7 +37,7 @@ export class SubjectsController {
   constructor(private readonly subjectsService: SubjectsService) {}
 
   @Post()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Create a new subject' })
   @ApiResponse({ status: 201, description: 'Subject created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -46,13 +48,17 @@ export class SubjectsController {
   async create(
     @Body() createSubjectDto: CreateSubjectDto,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.subjectsService.create(createSubjectDto, schoolId);
+    return this.subjectsService.create(createSubjectDto, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -70,13 +76,17 @@ export class SubjectsController {
   async findAll(
     @CurrentUser('school') schoolId: string,
     @Query() query: QuerySubjectDto,
+    @Req() req: Request,
   ) {
-    return this.subjectsService.findAll(schoolId, query);
+    return this.subjectsService.findAll(schoolId, query, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get(':id')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -86,12 +96,15 @@ export class SubjectsController {
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiResponse({ status: 200, description: 'Subject retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Subject not found' })
-  async findOne(@Param('id') id: string) {
-    return this.subjectsService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: Request) {
+    return this.subjectsService.findOne(id, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Patch(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiResponse({ status: 200, description: 'Subject updated successfully' })
@@ -103,22 +116,29 @@ export class SubjectsController {
   async update(
     @Param('id') id: string,
     @Body() updateSubjectDto: UpdateSubjectDto,
+    @Req() req: Request,
   ) {
-    return this.subjectsService.update(id, updateSubjectDto);
+    return this.subjectsService.update(id, updateSubjectDto, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Delete(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiResponse({ status: 200, description: 'Subject deleted successfully' })
   @ApiResponse({ status: 404, description: 'Subject not found' })
-  async remove(@Param('id') id: string) {
-    return this.subjectsService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: Request) {
+    return this.subjectsService.remove(id, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Post(':id/assign-class/:classId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Assign subject to a class' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -134,12 +154,16 @@ export class SubjectsController {
   async assignToClass(
     @Param('id') id: string,
     @Param('classId') classId: string,
+    @Req() req: Request,
   ) {
-    return this.subjectsService.assignToClass(id, classId);
+    return this.subjectsService.assignToClass(id, classId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Delete(':id/classes/:classId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Remove subject from a class' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -151,12 +175,16 @@ export class SubjectsController {
   async removeFromClass(
     @Param('id') id: string,
     @Param('classId') classId: string,
+    @Req() req: Request,
   ) {
-    return this.subjectsService.removeFromClass(id, classId);
+    return this.subjectsService.removeFromClass(id, classId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Post(':id/assign-teacher/:teacherId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Assign teacher to a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
@@ -172,12 +200,16 @@ export class SubjectsController {
   async assignTeacher(
     @Param('id') id: string,
     @Param('teacherId') teacherId: string,
+    @Req() req: Request,
   ) {
-    return this.subjectsService.assignTeacher(id, teacherId);
+    return this.subjectsService.assignTeacher(id, teacherId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Delete(':id/teachers/:teacherId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Remove teacher from a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
@@ -189,13 +221,17 @@ export class SubjectsController {
   async removeTeacher(
     @Param('id') id: string,
     @Param('teacherId') teacherId: string,
+    @Req() req: Request,
   ) {
-    return this.subjectsService.removeTeacher(id, teacherId);
+    return this.subjectsService.removeTeacher(id, teacherId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get('by-class/:classId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -213,7 +249,7 @@ export class SubjectsController {
 
   @Get('by-teacher/:teacherId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -229,3 +265,4 @@ export class SubjectsController {
     return this.subjectsService.getSubjectsByTeacher(teacherId);
   }
 }
+

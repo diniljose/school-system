@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -34,7 +35,7 @@ export class AcademicYearsController {
   constructor(private readonly academicYearsService: AcademicYearsService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Create a new academic year' })
   @ApiResponse({
     status: 201,
@@ -42,8 +43,13 @@ export class AcademicYearsController {
   })
   @ApiResponse({ status: 404, description: 'School not found' })
   @ApiResponse({ status: 409, description: 'Academic year already exists' })
-  create(@Body() createAcademicYearDto: CreateAcademicYearDto) {
-    return this.academicYearsService.create(createAcademicYearDto);
+  create(@Body() createAcademicYearDto: CreateAcademicYearDto, @Request() req) {
+    // Pass user context for tenant-aware operations
+    return this.academicYearsService.create(createAcademicYearDto, {
+      schoolId: req.user.school,
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Get()
@@ -54,8 +60,13 @@ export class AcademicYearsController {
     status: 200,
     description: 'Academic years retrieved successfully',
   })
-  findAll(@Query() query: any) {
-    return this.academicYearsService.findAll(query);
+  findAll(@Query() query: any, @Request() req) {
+    // Pass user context for tenant-aware operations
+    return this.academicYearsService.findAll(query, {
+      schoolId: req.user.school,
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Get('current')
@@ -65,8 +76,12 @@ export class AcademicYearsController {
     description: 'Current academic year retrieved successfully',
   })
   @ApiResponse({ status: 404, description: 'No current academic year found' })
-  getCurrentYear(@Query('schoolId') schoolId: string) {
-    return this.academicYearsService.getCurrentYear(schoolId);
+  getCurrentYear(@Query('schoolId') schoolId: string, @Request() req) {
+    const effectiveSchoolId = schoolId || req.user.school;
+    return this.academicYearsService.getCurrentYear(effectiveSchoolId, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Get(':id')
@@ -76,12 +91,15 @@ export class AcademicYearsController {
     description: 'Academic year retrieved successfully',
   })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
-  findOne(@Param('id') id: string) {
-    return this.academicYearsService.findById(id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.academicYearsService.findById(id, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update academic year' })
   @ApiResponse({
     status: 200,
@@ -95,46 +113,59 @@ export class AcademicYearsController {
   update(
     @Param('id') id: string,
     @Body() updateAcademicYearDto: UpdateAcademicYearDto,
+    @Request() req,
   ) {
-    return this.academicYearsService.update(id, updateAcademicYearDto);
+    return this.academicYearsService.update(id, updateAcademicYearDto, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete academic year' })
   @ApiResponse({
     status: 200,
     description: 'Academic year deleted successfully',
   })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
-  remove(@Param('id') id: string) {
-    return this.academicYearsService.remove(id);
+  remove(@Param('id') id: string, @Request() req) {
+    return this.academicYearsService.remove(id, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Post(':id/set-current')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Set academic year as current' })
   @ApiResponse({
     status: 200,
     description: 'Academic year set as current successfully',
   })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
-  setCurrentYear(@Param('id') id: string, @Body('schoolId') schoolId: string) {
-    return this.academicYearsService.setCurrentYear(schoolId, id);
+  setCurrentYear(@Param('id') id: string, @Request() req) {
+    return this.academicYearsService.setCurrentYear(req.user.school, id, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Post(':id/terms')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Add a term to academic year' })
   @ApiResponse({ status: 201, description: 'Term added successfully' })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
   @ApiResponse({ status: 409, description: 'Term already exists' })
-  addTerm(@Param('id') id: string, @Body() addTermDto: AddTermDto) {
-    return this.academicYearsService.addTerm(id, addTermDto);
+  addTerm(@Param('id') id: string, @Body() addTermDto: AddTermDto, @Request() req) {
+    return this.academicYearsService.addTerm(id, addTermDto, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Patch(':id/terms/:termId')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update a term' })
   @ApiResponse({ status: 200, description: 'Term updated successfully' })
   @ApiResponse({ status: 404, description: 'Academic year or term not found' })
@@ -142,30 +173,40 @@ export class AcademicYearsController {
     @Param('id') id: string,
     @Param('termId') termId: string,
     @Body() updateTermDto: AddTermDto,
+    @Request() req,
   ) {
-    return this.academicYearsService.updateTerm(id, termId, updateTermDto);
+    return this.academicYearsService.updateTerm(id, termId, updateTermDto, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Delete(':id/terms/:termId')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Remove a term' })
   @ApiResponse({ status: 200, description: 'Term removed successfully' })
   @ApiResponse({ status: 404, description: 'Academic year or term not found' })
-  removeTerm(@Param('id') id: string, @Param('termId') termId: string) {
-    return this.academicYearsService.removeTerm(id, termId);
+  removeTerm(@Param('id') id: string, @Param('termId') termId: string, @Request() req) {
+    return this.academicYearsService.removeTerm(id, termId, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Post(':id/holidays')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Add a holiday to academic year' })
   @ApiResponse({ status: 201, description: 'Holiday added successfully' })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
-  addHoliday(@Param('id') id: string, @Body() addHolidayDto: AddHolidayDto) {
-    return this.academicYearsService.addHoliday(id, addHolidayDto);
+  addHoliday(@Param('id') id: string, @Body() addHolidayDto: AddHolidayDto, @Request() req) {
+    return this.academicYearsService.addHoliday(id, addHolidayDto, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Patch(':id/holidays/:holidayId')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update a holiday' })
   @ApiResponse({ status: 200, description: 'Holiday updated successfully' })
   @ApiResponse({
@@ -176,16 +217,16 @@ export class AcademicYearsController {
     @Param('id') id: string,
     @Param('holidayId') holidayId: string,
     @Body() updateHolidayDto: AddHolidayDto,
+    @Request() req,
   ) {
-    return this.academicYearsService.updateHoliday(
-      id,
-      holidayId,
-      updateHolidayDto,
-    );
+    return this.academicYearsService.updateHoliday(id, holidayId, updateHolidayDto, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 
   @Delete(':id/holidays/:holidayId')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Remove a holiday' })
   @ApiResponse({ status: 200, description: 'Holiday removed successfully' })
   @ApiResponse({
@@ -195,7 +236,12 @@ export class AcademicYearsController {
   removeHoliday(
     @Param('id') id: string,
     @Param('holidayId') holidayId: string,
+    @Request() req,
   ) {
-    return this.academicYearsService.removeHoliday(id, holidayId);
+    return this.academicYearsService.removeHoliday(id, holidayId, {
+      schoolCode: req.user.schoolCode,
+      isTenantUser: req.user.isTenantUser,
+    });
   }
 }
+

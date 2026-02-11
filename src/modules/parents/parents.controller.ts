@@ -35,7 +35,7 @@ export class ParentsController {
   constructor(private readonly parentsService: ParentsService) {}
 
   @Post()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Create new parent' })
   @ApiResponse({ status: 201, description: 'Parent created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -48,7 +48,7 @@ export class ParentsController {
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.RECEPTIONIST,
@@ -64,7 +64,7 @@ export class ParentsController {
 
   @Get('by-student/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.RECEPTIONIST,
@@ -82,7 +82,7 @@ export class ParentsController {
 
   @Get(':id')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.RECEPTIONIST,
@@ -99,7 +99,7 @@ export class ParentsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Update parent' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Parent updated successfully' })
@@ -113,7 +113,7 @@ export class ParentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete parent' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Parent deleted successfully' })
@@ -127,7 +127,7 @@ export class ParentsController {
   }
 
   @Post(':id/link-child')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Link a child (student) to parent' })
   @ApiParam({ name: 'id', type: String, description: 'Parent ID' })
   @ApiResponse({ status: 200, description: 'Child linked successfully' })
@@ -141,7 +141,7 @@ export class ParentsController {
   }
 
   @Delete(':id/children/:childId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Unlink a child (student) from parent' })
   @ApiParam({ name: 'id', type: String, description: 'Parent ID' })
   @ApiParam({ name: 'childId', type: String, description: 'Student ID' })
@@ -156,7 +156,7 @@ export class ParentsController {
   }
 
   @Post(':id/set-primary')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Set parent as primary contact for their children' })
   @ApiParam({ name: 'id', type: String, description: 'Parent ID' })
   @ApiResponse({
@@ -171,3 +171,4 @@ export class ParentsController {
     return this.parentsService.setAsPrimaryContact(id, schoolId);
   }
 }
+

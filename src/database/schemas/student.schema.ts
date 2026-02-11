@@ -21,10 +21,10 @@ export class Student {
   @Prop()
   middleName: string;
 
-  @Prop({ required: true })
+  @Prop()
   dateOfBirth: Date;
 
-  @Prop({ required: true })
+  @Prop()
   gender: string;
 
   @Prop()
@@ -64,13 +64,13 @@ export class Student {
   @Prop({ type: Types.ObjectId, ref: 'Class' })
   currentClass: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Section' })
-  currentSection: Types.ObjectId;
+  @Prop({ type: String })
+  currentSection: string;
 
   @Prop()
   rollNumber: string;
 
-  @Prop({ required: true })
+  @Prop()
   admissionDate: Date;
 
   @Prop({ type: String, enum: StudentStatus, default: StudentStatus.ACTIVE })

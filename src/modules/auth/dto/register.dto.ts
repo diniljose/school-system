@@ -61,10 +61,10 @@ export class RegisterDto {
   @IsNotEmpty()
   role: UserRole;
 
-  @ApiProperty({ example: 'SCH001' })
+  @ApiProperty({ example: 'SCH001', required: false })
   @IsString()
-  @IsNotEmpty()
-  school: string;
+  @IsOptional()
+  schoolCode?: string; // Accept school code instead of ObjectId
 
   @ApiProperty({ example: '123 Main St, City', required: false })
   @IsString()

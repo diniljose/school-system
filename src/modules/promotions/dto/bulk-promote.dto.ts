@@ -4,36 +4,47 @@ import { IsString, IsNotEmpty, IsOptional, IsMongoId } from 'class-validator';
 export class BulkPromoteDto {
   @ApiProperty()
   @IsNotEmpty()
-  @IsMongoId()
+  @IsString()
   classId: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  section: string;
+  section?: string;
 
   @ApiProperty()
   @IsNotEmpty()
-  @IsMongoId()
+  @IsString()
   toClassId: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  toSection: string;
+  toSection?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsMongoId()
-  fromAcademicYear: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  fromAcademicYear?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsMongoId()
-  toAcademicYear: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  toAcademicYear?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   remarks?: string;
+
+  // Frontend aliases
+  @ApiPropertyOptional({ description: 'Alias for classId' })
+  @IsOptional()
+  @IsString()
+  fromClass?: string;
+
+  @ApiPropertyOptional({ description: 'Alias for toClassId' })
+  @IsOptional()
+  @IsString()
+  toClass?: string;
 }

@@ -36,7 +36,7 @@ export class ResultsController {
   constructor(private readonly resultsService: ResultsService) {}
 
   @Post()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Create a new result' })
   @ApiResponse({ status: 201, description: 'Result created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -53,7 +53,7 @@ export class ResultsController {
   }
 
   @Post('bulk')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Create multiple results at once' })
   @ApiResponse({ status: 201, description: 'Results created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -71,7 +71,7 @@ export class ResultsController {
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -96,30 +96,13 @@ export class ResultsController {
     });
   }
 
-  @Get(':id')
-  @Roles(
-    UserRole.SCHOOL_ADMIN,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
-  @ApiOperation({ summary: 'Get a result by ID' })
-  @ApiParam({ name: 'id', description: 'Result ID' })
-  @ApiResponse({ status: 200, description: 'Result retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Result not found' })
-  async findById(
-    @Param('id') id: string,
-    @CurrentUser('school') schoolId: string,
-  ) {
-    return this.resultsService.findById(id, schoolId);
-  }
+  // ————————————————————————————————————————————————————
+  // Specific GET routes MUST come before @Get(':id')
+  // ————————————————————————————————————————————————————
 
   @Get('student/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -138,86 +121,9 @@ export class ResultsController {
     return this.resultsService.findByStudent(studentId, academicYearId);
   }
 
-  @Patch(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  @ApiOperation({ summary: 'Update a result' })
-  @ApiParam({ name: 'id', description: 'Result ID' })
-  @ApiResponse({ status: 200, description: 'Result updated successfully' })
-  @ApiResponse({ status: 404, description: 'Result not found' })
-  async update(
-    @Param('id') id: string,
-    @Body() updateResultDto: UpdateResultDto,
-    @CurrentUser('school') schoolId: string,
-  ) {
-    return this.resultsService.update(id, updateResultDto, schoolId);
-  }
-
-  @Delete(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
-  @ApiOperation({ summary: 'Delete a result' })
-  @ApiParam({ name: 'id', description: 'Result ID' })
-  @ApiResponse({ status: 200, description: 'Result deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Result not found' })
-  async delete(
-    @Param('id') id: string,
-    @CurrentUser('school') schoolId: string,
-  ) {
-    return this.resultsService.delete(id, schoolId);
-  }
-
-  @Post('calculate-grades/:id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  @ApiOperation({ summary: 'Calculate grades for a result' })
-  @ApiParam({ name: 'id', description: 'Result ID' })
-  @ApiResponse({ status: 200, description: 'Grades calculated successfully' })
-  @ApiResponse({ status: 404, description: 'Result not found' })
-  async calculateGrades(@Param('id') id: string) {
-    return this.resultsService.calculateGrades(id);
-  }
-
-  @Post('calculate-ranks/:examId/:classId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
-  @ApiOperation({ summary: 'Calculate ranks for an exam and class' })
-  @ApiParam({ name: 'examId', description: 'Exam ID' })
-  @ApiParam({ name: 'classId', description: 'Class ID' })
-  @ApiResponse({ status: 200, description: 'Ranks calculated successfully' })
-  async calculateRanks(
-    @Param('examId') examId: string,
-    @Param('classId') classId: string,
-  ) {
-    return this.resultsService.calculateRanks(examId, classId);
-  }
-
-  @Post('publish/:examId/:classId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
-  @ApiOperation({ summary: 'Publish results for an exam and class' })
-  @ApiParam({ name: 'examId', description: 'Exam ID' })
-  @ApiParam({ name: 'classId', description: 'Class ID' })
-  @ApiResponse({ status: 200, description: 'Results published successfully' })
-  @ApiResponse({ status: 404, description: 'Exam not found' })
-  async publishResults(
-    @Param('examId') examId: string,
-    @Param('classId') classId: string,
-  ) {
-    return this.resultsService.publishResults(examId, classId);
-  }
-
-  @Post('unpublish/:examId/:classId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
-  @ApiOperation({ summary: 'Unpublish results for an exam and class' })
-  @ApiParam({ name: 'examId', description: 'Exam ID' })
-  @ApiParam({ name: 'classId', description: 'Class ID' })
-  @ApiResponse({ status: 200, description: 'Results unpublished successfully' })
-  async unpublishResults(
-    @Param('examId') examId: string,
-    @Param('classId') classId: string,
-  ) {
-    return this.resultsService.unpublishResults(examId, classId);
-  }
-
   @Get('report-card/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -240,9 +146,31 @@ export class ResultsController {
     return this.resultsService.getStudentReportCard(studentId, academicYearId);
   }
 
+  @Get('trend/:studentId')
+  @Roles(
+    UserRole.PRINCIPAL,
+    UserRole.PRINCIPAL,
+    UserRole.VICE_PRINCIPAL,
+    UserRole.TEACHER,
+    UserRole.CLASS_TEACHER,
+    UserRole.STUDENT,
+    UserRole.PARENT,
+  )
+  @ApiOperation({
+    summary: 'Get performance trend for a student across all exams',
+  })
+  @ApiParam({ name: 'studentId', description: 'Student ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Performance trend retrieved successfully',
+  })
+  async getPerformanceTrend(@Param('studentId') studentId: string) {
+    return this.resultsService.getPerformanceTrend(studentId);
+  }
+
   @Get('class/:examId/:classId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -266,7 +194,7 @@ export class ResultsController {
 
   @Get('top-performers/:examId/:classId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -295,7 +223,7 @@ export class ResultsController {
 
   @Get('analysis/:examId/:classId/:subjectId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -321,9 +249,13 @@ export class ResultsController {
     );
   }
 
-  @Get('trend/:studentId')
+  // ————————————————————————————————————————————————————
+  // Generic :id route MUST come AFTER all specific routes
+  // ————————————————————————————————————————————————————
+
+  @Get(':id')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -331,15 +263,92 @@ export class ResultsController {
     UserRole.STUDENT,
     UserRole.PARENT,
   )
-  @ApiOperation({
-    summary: 'Get performance trend for a student across all exams',
-  })
-  @ApiParam({ name: 'studentId', description: 'Student ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Performance trend retrieved successfully',
-  })
-  async getPerformanceTrend(@Param('studentId') studentId: string) {
-    return this.resultsService.getPerformanceTrend(studentId);
+  @ApiOperation({ summary: 'Get a result by ID' })
+  @ApiParam({ name: 'id', description: 'Result ID' })
+  @ApiResponse({ status: 200, description: 'Result retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Result not found' })
+  async findById(
+    @Param('id') id: string,
+    @CurrentUser('school') schoolId: string,
+  ) {
+    return this.resultsService.findById(id, schoolId);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @ApiOperation({ summary: 'Update a result' })
+  @ApiParam({ name: 'id', description: 'Result ID' })
+  @ApiResponse({ status: 200, description: 'Result updated successfully' })
+  @ApiResponse({ status: 404, description: 'Result not found' })
+  async update(
+    @Param('id') id: string,
+    @Body() updateResultDto: UpdateResultDto,
+    @CurrentUser('school') schoolId: string,
+  ) {
+    return this.resultsService.update(id, updateResultDto, schoolId);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @ApiOperation({ summary: 'Delete a result' })
+  @ApiParam({ name: 'id', description: 'Result ID' })
+  @ApiResponse({ status: 200, description: 'Result deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Result not found' })
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser('school') schoolId: string,
+  ) {
+    return this.resultsService.delete(id, schoolId);
+  }
+
+  @Post('calculate-grades/:id')
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @ApiOperation({ summary: 'Calculate grades for a result' })
+  @ApiParam({ name: 'id', description: 'Result ID' })
+  @ApiResponse({ status: 200, description: 'Grades calculated successfully' })
+  @ApiResponse({ status: 404, description: 'Result not found' })
+  async calculateGrades(@Param('id') id: string) {
+    return this.resultsService.calculateGrades(id);
+  }
+
+  @Post('calculate-ranks/:examId/:classId')
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @ApiOperation({ summary: 'Calculate ranks for an exam and class' })
+  @ApiParam({ name: 'examId', description: 'Exam ID' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Ranks calculated successfully' })
+  async calculateRanks(
+    @Param('examId') examId: string,
+    @Param('classId') classId: string,
+  ) {
+    return this.resultsService.calculateRanks(examId, classId);
+  }
+
+  @Post('publish/:examId/:classId')
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @ApiOperation({ summary: 'Publish results for an exam and class' })
+  @ApiParam({ name: 'examId', description: 'Exam ID' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Results published successfully' })
+  @ApiResponse({ status: 404, description: 'Exam not found' })
+  async publishResults(
+    @Param('examId') examId: string,
+    @Param('classId') classId: string,
+  ) {
+    return this.resultsService.publishResults(examId, classId);
+  }
+
+  @Post('unpublish/:examId/:classId')
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @ApiOperation({ summary: 'Unpublish results for an exam and class' })
+  @ApiParam({ name: 'examId', description: 'Exam ID' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiResponse({ status: 200, description: 'Results unpublished successfully' })
+  async unpublishResults(
+    @Param('examId') examId: string,
+    @Param('classId') classId: string,
+  ) {
+    return this.resultsService.unpublishResults(examId, classId);
   }
 }
+

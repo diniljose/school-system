@@ -1,4 +1,4 @@
-// src/config/index.ts
+// src/constants/index.ts
 import { Logger, LogLevel, ServiceUnavailableException } from '@nestjs/common';
 
 export const HOST = process.env.SERVER_HOST || '0.0.0.0';
@@ -6,7 +6,8 @@ export const PORT = parseInt(process.env.SERVER_PORT || '3000', 10);
 export const DEBUG_LEVEL = (process.env.SERVER_LOG_LEVEL ||
   'debug') as LogLevel;
 export const APP_DOCUMENTATION = process.env.APP_DOCUMENTATION || '';
-export const POSTGRES_DB_URI = process.env.DB_URI || '';
+export const MONGODB_URI =
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/school-platform';
 
 export const debugLevel: LogLevel[] = (() => {
   switch (DEBUG_LEVEL) {

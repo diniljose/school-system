@@ -40,7 +40,7 @@ export class SettingsController {
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -52,7 +52,7 @@ export class SettingsController {
   }
 
   @Patch()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update general settings' })
   @ApiResponse({ status: 200, description: 'Settings updated successfully' })
   @ApiResponse({ status: 404, description: 'Settings not found' })
@@ -65,7 +65,7 @@ export class SettingsController {
 
   @Get('grading-system')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -80,7 +80,7 @@ export class SettingsController {
   }
 
   @Patch('grading-system')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update entire grading system' })
   @ApiResponse({
     status: 200,
@@ -95,7 +95,7 @@ export class SettingsController {
   }
 
   @Post('grading-system/grades')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Add a new grade to grading system' })
   @ApiResponse({ status: 201, description: 'Grade created successfully' })
   @ApiResponse({ status: 400, description: 'Grade already exists or overlaps' })
@@ -107,7 +107,7 @@ export class SettingsController {
   }
 
   @Patch('grading-system/grades/:gradeId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update a specific grade' })
   @ApiParam({ name: 'gradeId', description: 'Grade index' })
   @ApiResponse({ status: 200, description: 'Grade updated successfully' })
@@ -121,7 +121,7 @@ export class SettingsController {
   }
 
   @Delete('grading-system/grades/:gradeId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete a grade from grading system' })
   @ApiParam({ name: 'gradeId', description: 'Grade index' })
   @ApiResponse({ status: 200, description: 'Grade deleted successfully' })
@@ -135,7 +135,7 @@ export class SettingsController {
 
   @Get('fee-templates')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -150,7 +150,7 @@ export class SettingsController {
   }
 
   @Post('fee-templates')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Create a new fee template' })
   @ApiResponse({
     status: 201,
@@ -164,7 +164,7 @@ export class SettingsController {
   }
 
   @Patch('fee-templates/:templateId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Update a fee template' })
   @ApiParam({ name: 'templateId', description: 'Fee template index' })
   @ApiResponse({
@@ -185,7 +185,7 @@ export class SettingsController {
   }
 
   @Delete('fee-templates/:templateId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Delete a fee template' })
   @ApiParam({ name: 'templateId', description: 'Fee template index' })
   @ApiResponse({
@@ -202,7 +202,7 @@ export class SettingsController {
 
   @Get('working-days')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -217,7 +217,7 @@ export class SettingsController {
   }
 
   @Patch('working-days')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update working days configuration' })
   @ApiResponse({
     status: 200,
@@ -232,7 +232,7 @@ export class SettingsController {
 
   @Get('calendar')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -253,7 +253,7 @@ export class SettingsController {
   }
 
   @Post('calendar/events')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({
     summary: 'Add a calendar event (placeholder)',
   })
@@ -269,7 +269,7 @@ export class SettingsController {
   }
 
   @Patch('calendar/events/:eventId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({
     summary: 'Update a calendar event (placeholder)',
   })
@@ -291,7 +291,7 @@ export class SettingsController {
   }
 
   @Delete('calendar/events/:eventId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({
     summary: 'Delete a calendar event (placeholder)',
   })
@@ -307,3 +307,4 @@ export class SettingsController {
     return this.settingsService.deleteCalendarEvent(schoolId, eventId);
   }
 }
+

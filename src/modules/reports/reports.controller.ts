@@ -33,7 +33,7 @@ export class ReportsController {
 
   @Get('student/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -61,7 +61,7 @@ export class ReportsController {
 
   @Get('class/:classId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -91,7 +91,7 @@ export class ReportsController {
 
   @Get('attendance')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -120,7 +120,7 @@ export class ReportsController {
 
   @Get('fee-collection')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -147,7 +147,7 @@ export class ReportsController {
 
   @Get('exam-analysis/:examId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -167,7 +167,7 @@ export class ReportsController {
   }
 
   @Get('teacher/:teacherId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Generate teacher performance report' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
@@ -189,7 +189,7 @@ export class ReportsController {
   }
 
   @Get('school-overview')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Generate school overview dashboard report' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
   @ApiResponse({
@@ -208,7 +208,7 @@ export class ReportsController {
 
   @Get('defaulters')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -227,7 +227,7 @@ export class ReportsController {
   }
 
   @Get('promotions')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Generate promotion statistics report' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
   @ApiResponse({
@@ -246,7 +246,7 @@ export class ReportsController {
 
   @Post('export/pdf')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -265,7 +265,7 @@ export class ReportsController {
 
   @Post('export/excel')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.ACCOUNTANT,
@@ -282,3 +282,4 @@ export class ReportsController {
     );
   }
 }
+

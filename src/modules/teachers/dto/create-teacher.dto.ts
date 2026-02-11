@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
-  IsDate,
   IsOptional,
   IsEmail,
   IsArray,
@@ -74,17 +73,15 @@ class ExperienceDto {
   @IsString()
   designation: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  fromDate: Date;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  fromDate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  toDate?: Date;
+  @IsString()
+  toDate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -159,38 +156,44 @@ export class CreateTeacherDto {
   @IsString()
   photo?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  dateOfBirth: Date;
-
-  @ApiProperty({ enum: ['male', 'female', 'other'] })
-  @IsNotEmpty()
-  @IsString()
-  gender: string;
-
-  @ApiPropertyOptional({ type: AddressDto })
+  @ApiPropertyOptional({ description: 'Date of birth (ISO string)' })
   @IsOptional()
-  @ValidateNested()
-  @Type(() => AddressDto)
-  address?: AddressDto;
+  @IsString()
+  dateOfBirth?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  joiningDate: Date;
+  @ApiPropertyOptional({ enum: ['male', 'female', 'other'] })
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @ApiPropertyOptional({ description: 'Address as string or object' })
+  @IsOptional()
+  address?: any;
+
+  @ApiPropertyOptional({ description: 'Joining date (ISO string)' })
+  @IsOptional()
+  @IsString()
+  joiningDate?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   designation?: string;
 
+  @ApiPropertyOptional({ description: 'Role code for permissions (e.g., class_teacher, subject_teacher)' })
+  @IsOptional()
+  @IsString()
+  roleCode?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   department?: string;
+
+  @ApiPropertyOptional({ description: 'Single qualification string' })
+  @IsOptional()
+  @IsString()
+  qualification?: string;
 
   @ApiPropertyOptional({ type: [QualificationDto] })
   @IsOptional()

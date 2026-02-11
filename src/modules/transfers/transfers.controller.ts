@@ -34,8 +34,31 @@ import { UserRole } from '../../common/enums/roles.enum';
 export class TransfersController {
   constructor(private readonly transfersService: TransfersService) {}
 
+  @Post()
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @ApiOperation({ summary: 'Initiate a transfer (auto-detects in/out from fields)' })
+  @ApiResponse({ status: 201, description: 'Transfer initiated successfully' })
+  async initiateTransfer(
+    @Body() transferDto: TransferOutDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    // Default transferDate to today if not provided
+    if (!transferDto.transferDate) {
+      transferDto.transferDate = new Date().toISOString().split('T')[0];
+    }
+    if (!transferDto.reason) {
+      transferDto.reason = 'Transfer requested';
+    }
+    // Map toSchool string as externalSchoolName if not a MongoId
+    if (transferDto.toSchool && !/^[0-9a-fA-F]{24}$/.test(transferDto.toSchool)) {
+      transferDto.externalSchoolName = transferDto.toSchool;
+      transferDto.toSchool = undefined;
+    }
+    return this.transfersService.initiateTransferOut(transferDto, userId);
+  }
+
   @Post('out')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Initiate transfer out for a student' })
   @ApiResponse({
     status: 201,
@@ -55,7 +78,7 @@ export class TransfersController {
   }
 
   @Post(':id/complete-out')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Complete transfer out and generate TC' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({
@@ -73,7 +96,7 @@ export class TransfersController {
   }
 
   @Post('in')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Initiate transfer in for a student' })
   @ApiResponse({
     status: 201,
@@ -93,7 +116,7 @@ export class TransfersController {
   }
 
   @Post(':id/complete-in')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Complete transfer in for a student' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({
@@ -112,7 +135,7 @@ export class TransfersController {
   }
 
   @Post(':id/cancel')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Cancel a transfer request' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({ status: 200, description: 'Transfer cancelled successfully' })
@@ -126,27 +149,9 @@ export class TransfersController {
     return this.transfersService.cancelTransfer(id, reason);
   }
 
-  @Get(':id')
-  @Roles(
-    UserRole.SCHOOL_ADMIN,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
-  @ApiOperation({ summary: 'Get transfer details by ID' })
-  @ApiParam({ name: 'id', description: 'Transfer ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Transfer details retrieved successfully',
-  })
-  @ApiResponse({ status: 404, description: 'Transfer not found' })
-  async getTransferById(@Param('id') id: string) {
-    return this.transfersService.getTransferById(id);
-  }
-
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -165,7 +170,7 @@ export class TransfersController {
 
   @Get('student/:studentId/history')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -182,9 +187,27 @@ export class TransfersController {
     return this.transfersService.getStudentTransferHistory(studentId);
   }
 
+  @Get(':id')
+  @Roles(
+    UserRole.PRINCIPAL,
+    UserRole.PRINCIPAL,
+    UserRole.VICE_PRINCIPAL,
+    UserRole.TEACHER,
+  )
+  @ApiOperation({ summary: 'Get transfer details by ID' })
+  @ApiParam({ name: 'id', description: 'Transfer ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transfer details retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Transfer not found' })
+  async getTransferById(@Param('id') id: string) {
+    return this.transfersService.getTransferById(id);
+  }
+
   @Get(':id/certificate')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -205,7 +228,7 @@ export class TransfersController {
   }
 
   @Patch(':id/documents')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
   @ApiOperation({ summary: 'Update transfer documents' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({
@@ -220,3 +243,4 @@ export class TransfersController {
     return this.transfersService.updateTransferDocuments(id, documents);
   }
 }
+

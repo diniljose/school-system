@@ -32,9 +32,57 @@ import { UserRole } from '../../common/enums/roles.enum';
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
+  @Get()
+  @Roles(
+    UserRole.PRINCIPAL,
+    UserRole.PRINCIPAL,
+    UserRole.VICE_PRINCIPAL,
+    UserRole.TEACHER,
+    UserRole.CLASS_TEACHER,
+  )
+  @ApiOperation({ summary: 'Get attendance records with filters' })
+  @ApiQuery({ name: 'classId', required: false, type: String })
+  @ApiQuery({ name: 'date', required: false, type: String })
+  @ApiQuery({ name: 'studentId', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Attendance records retrieved' })
+  async getAttendance(
+    @Query('classId') classId?: string,
+    @Query('date') date?: string,
+    @Query('studentId') studentId?: string,
+  ) {
+    if (studentId) {
+      return this.attendanceService.getStudentAttendance(studentId, { startDate: date, endDate: date } as any);
+    }
+    if (classId && date) {
+      return this.attendanceService.getClassAttendance(classId, null, date);
+    }
+    return { data: [] };
+  }
+
+  @Post()
+  @Roles(
+    UserRole.PRINCIPAL,
+    UserRole.PRINCIPAL,
+    UserRole.TEACHER,
+    UserRole.CLASS_TEACHER,
+  )
+  @ApiOperation({ summary: 'Mark attendance for entire class (alias for mark-class)' })
+  @ApiResponse({ status: 201, description: 'Attendance marked successfully' })
+  async markAttendanceAlias(
+    @Body() markAttendanceDto: MarkAttendanceDto,
+    @CurrentUser('school') schoolId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.attendanceService.markClassAttendance(
+      markAttendanceDto,
+      schoolId,
+      userId,
+    );
+  }
+
   @Post('mark-class')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.CLASS_TEACHER,
@@ -60,7 +108,7 @@ export class AttendanceController {
 
   @Post('mark-individual')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.CLASS_TEACHER,
@@ -86,7 +134,7 @@ export class AttendanceController {
 
   @Get('student/:studentId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -147,7 +195,7 @@ export class AttendanceController {
 
   @Get('class/:classId')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -179,7 +227,7 @@ export class AttendanceController {
 
   @Get('student/:studentId/statistics')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -219,7 +267,7 @@ export class AttendanceController {
 
   @Get('class/:classId/absentees')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -251,7 +299,7 @@ export class AttendanceController {
 
   @Get('class/:classId/defaulters')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.CLASS_TEACHER,
@@ -292,7 +340,7 @@ export class AttendanceController {
 
   @Get('student/:studentId/monthly-report')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -339,7 +387,7 @@ export class AttendanceController {
 
   @Get('student/:studentId/yearly-report')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.VICE_PRINCIPAL,
     UserRole.TEACHER,
@@ -376,3 +424,4 @@ export class AttendanceController {
     );
   }
 }
+

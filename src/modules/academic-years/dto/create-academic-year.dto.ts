@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
-  IsDate,
   IsOptional,
   IsBoolean,
   IsArray,
@@ -13,59 +12,24 @@ import {
 import { Type } from 'class-transformer';
 
 class TermDto {
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  name: string;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  startDate: Date;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  endDate: Date;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  examStartDate?: Date;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  examEndDate?: Date;
+  @ApiProperty() @IsNotEmpty() @IsString() name: string;
+  @ApiProperty() @IsNotEmpty() @IsString() startDate: string;
+  @ApiProperty() @IsNotEmpty() @IsString() endDate: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() examStartDate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() examEndDate?: string;
 }
 
 class HolidayDto {
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  name: string;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  date: Date;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  description?: string;
+  @ApiProperty() @IsNotEmpty() @IsString() name: string;
+  @ApiProperty() @IsNotEmpty() @IsString() date: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
 }
 
 export class CreateAcademicYearDto {
-  @ApiProperty({ description: 'School ID' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ description: 'School ID (auto-derived from auth context if not provided)' })
+  @IsOptional()
   @IsString()
-  school: string;
+  school?: string;
 
   @ApiProperty({ description: 'Academic year name', example: '2024-2025' })
   @IsNotEmpty()
@@ -74,17 +38,15 @@ export class CreateAcademicYearDto {
   @MaxLength(50)
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Start date (ISO string)' })
   @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  startDate: Date;
+  @IsString()
+  startDate: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'End date (ISO string)' })
   @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  endDate: Date;
+  @IsString()
+  endDate: string;
 
   @ApiPropertyOptional({ default: false })
   @IsOptional()

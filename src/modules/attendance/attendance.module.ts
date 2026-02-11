@@ -8,6 +8,10 @@ import {
 } from '../../database/schemas/attendance.schema';
 import { Student, StudentSchema } from '../../database/schemas/student.schema';
 import { Class, ClassSchema } from '../../database/schemas/class.schema';
+import {
+  AcademicYear,
+  AcademicYearSchema,
+} from '../../database/schemas/academic-year.schema';
 
 @Module({
   imports: [
@@ -15,6 +19,7 @@ import { Class, ClassSchema } from '../../database/schemas/class.schema';
       { name: Attendance.name, schema: AttendanceSchema },
       { name: Student.name, schema: StudentSchema },
       { name: Class.name, schema: ClassSchema },
+      { name: AcademicYear.name, schema: AcademicYearSchema },
     ]),
   ],
   controllers: [AttendanceController],

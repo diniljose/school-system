@@ -10,6 +10,10 @@ import {
   StudentDocument,
 } from '../../database/schemas/student.schema';
 import { Class, ClassDocument } from '../../database/schemas/class.schema';
+import {
+  AcademicYear,
+  AcademicYearDocument,
+} from '../../database/schemas/academic-year.schema';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { MarkIndividualAttendanceDto } from './dto/mark-individual-attendance.dto';
 import { QueryAttendanceDto } from './dto/query-attendance.dto';
@@ -22,6 +26,8 @@ export class AttendanceService {
     private attendanceModel: Model<AttendanceDocument>,
     @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
+    @InjectModel(AcademicYear.name)
+    private academicYearModel: Model<AcademicYearDocument>,
   ) {}
 
   async markClassAttendance(
@@ -41,9 +47,12 @@ export class AttendanceService {
       throw new NotFoundException('Class not found');
     }
 
-    const sectionExists = classDoc.sections.some((s) => s.name === section);
-    if (!sectionExists) {
-      throw new NotFoundException(`Section ${section} not found in this class`);
+    // Section is optional — only validate if provided
+    if (section) {
+      const sectionExists = classDoc.sections?.some((s) => s.name === section);
+      if (classDoc.sections?.length > 0 && !sectionExists) {
+        throw new NotFoundException(`Section ${section} not found in this class`);
+      }
     }
 
     const attendanceDate = new Date(date);
@@ -52,9 +61,11 @@ export class AttendanceService {
     const filter: any = {
       school: new Types.ObjectId(schoolId),
       class: new Types.ObjectId(classId),
-      section,
       date: attendanceDate,
     };
+    if (section) {
+      filter.section = section;
+    }
 
     if (subjectId) {
       filter.subject = new Types.ObjectId(subjectId);
@@ -63,23 +74,32 @@ export class AttendanceService {
     const existingAttendance = await this.attendanceModel.findOne(filter);
 
     const attendanceRecords = records.map((record) => ({
-      student: new Types.ObjectId(record.student),
+      student: new Types.ObjectId(record.student || record.studentId),
       status: record.status,
       inTime: record.inTime || '',
       outTime: record.outTime || '',
-      remarks: record.remarks || '',
+      remarks: record.remarks || record.note || '',
     }));
+
+    const currentAcademicYear = await this.academicYearModel.findOne({
+      school: new Types.ObjectId(schoolId),
+      isCurrent: true,
+    });
+
+    if (!currentAcademicYear) {
+      throw new NotFoundException('No current academic year found for this school');
+    }
 
     const attendanceData = {
       school: new Types.ObjectId(schoolId),
-      academicYear: classDoc.school,
+      academicYear: currentAcademicYear._id,
       class: new Types.ObjectId(classId),
-      section,
+      section: section || 'A',
       date: attendanceDate,
       records: attendanceRecords,
       markedBy: new Types.ObjectId(userId),
       ...(subjectId && { subject: new Types.ObjectId(subjectId) }),
-      ...(period && { period: parseInt(period) }),
+      ...(period != null && { period: typeof period === 'number' ? period : parseInt(period, 10) }),
     };
 
     if (existingAttendance) {
@@ -168,16 +188,25 @@ export class AttendanceService {
       attendance.markedBy = new Types.ObjectId(userId);
       await attendance.save();
     } else {
+      const currentAcademicYear = await this.academicYearModel.findOne({
+        school: new Types.ObjectId(schoolId),
+        isCurrent: true,
+      });
+
+      if (!currentAcademicYear) {
+        throw new NotFoundException('No current academic year found for this school');
+      }
+
       attendance = new this.attendanceModel({
         school: new Types.ObjectId(schoolId),
-        academicYear: classDoc.school,
+        academicYear: currentAcademicYear._id,
         class: new Types.ObjectId(classId),
         section,
         date: attendanceDate,
         records: [studentRecord],
         markedBy: new Types.ObjectId(userId),
         ...(subjectId && { subject: new Types.ObjectId(subjectId) }),
-        ...(period && { period: parseInt(period) }),
+        ...(period != null && { period: typeof period === 'number' ? period : parseInt(period, 10) }),
       });
       await attendance.save();
     }
@@ -273,12 +302,16 @@ export class AttendanceService {
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
 
+    const filter: any = {
+      class: new Types.ObjectId(classId),
+      date: attendanceDate,
+    };
+    if (section) {
+      filter.section = section;
+    }
+
     const attendance = await this.attendanceModel
-      .find({
-        class: new Types.ObjectId(classId),
-        section,
-        date: attendanceDate,
-      })
+      .find(filter)
       .populate('subject', 'name code')
       .populate({
         path: 'records.student',
@@ -287,7 +320,7 @@ export class AttendanceService {
       .exec();
 
     if (!attendance || attendance.length === 0) {
-      throw new NotFoundException('No attendance records found for this date');
+      return { data: [] };
     }
 
     return attendance;

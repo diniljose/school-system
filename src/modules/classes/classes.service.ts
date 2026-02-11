@@ -22,6 +22,13 @@ import {
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { QueryClassDto } from './dto/query-class.dto';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
+
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class ClassesService {
@@ -30,30 +37,134 @@ export class ClassesService {
     @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
 
-  async create(createClassDto: CreateClassDto, schoolId: string) {
+  private async getClassModel(context?: TenantContext): Promise<Model<ClassDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ClassDocument>(
+        context.schoolCode,
+        'Class',
+      );
+    }
+    return this.classModel;
+  }
+
+  private async getStudentModel(context?: TenantContext): Promise<Model<StudentDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<StudentDocument>(
+        context.schoolCode,
+        'Student',
+      );
+    }
+    return this.studentModel;
+  }
+
+  private async getTeacherModel(context?: TenantContext): Promise<Model<TeacherDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<TeacherDocument>(
+        context.schoolCode,
+        'Teacher',
+      );
+    }
+    return this.teacherModel;
+  }
+
+  private async getSubjectModel(context?: TenantContext): Promise<Model<SubjectDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<SubjectDocument>(
+        context.schoolCode,
+        'Subject',
+      );
+    }
+    return this.subjectModel;
+  }
+
+  /**
+   * Auto-derive numeric grade from class name.
+   * e.g. "Grade 5" → 5, "Class 10" → 10, "10th Standard" → 10, "KG" → 0
+   */
+  private deriveGrade(name: string): number {
+    const match = name.match(/(\d+)/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+    const lower = name.toLowerCase();
+    if (lower.includes('kg') || lower.includes('kindergarten') || lower.includes('nursery') || lower.includes('pre')) {
+      return 0;
+    }
+    return 1;
+  }
+
+  async create(createClassDto: CreateClassDto, schoolId: string, context?: TenantContext) {
     try {
-      const existingClass = await this.classModel.findOne({
-        school: new Types.ObjectId(schoolId),
-        name: createClassDto.name,
-      });
+      const classModel = await this.getClassModel(context);
+      const teacherModel = await this.getTeacherModel(context);
+
+      const filter: any = { name: createClassDto.name };
+      if (!context?.isTenantUser) {
+        filter.school = new Types.ObjectId(schoolId);
+      }
+
+      const existingClass = await classModel.findOne(filter);
 
       if (existingClass) {
         throw new ConflictException('Class with this name already exists');
       }
 
-      const classData = {
-        ...createClassDto,
-        school: new Types.ObjectId(schoolId),
+      // Auto-derive grade if not provided
+      const grade = createClassDto.grade !== undefined && createClassDto.grade !== null
+        ? Number(createClassDto.grade)
+        : this.deriveGrade(createClassDto.name);
+
+      // Build sections array from flat fields if sections array not provided
+      let sections: any[] = createClassDto.sections ? [...createClassDto.sections] : [];
+      if (sections.length === 0 && createClassDto.section) {
+        const sectionEntry: any = {
+          name: createClassDto.section,
+          capacity: createClassDto.capacity || 30,
+        };
+        if (createClassDto.classTeacher) {
+          sectionEntry.classTeacher = new Types.ObjectId(createClassDto.classTeacher);
+        }
+        sections = [sectionEntry];
+      } else if (sections.length > 0) {
+        // Convert classTeacher strings to ObjectIds in sections
+        sections = sections.map((s: any) => ({
+          ...s,
+          classTeacher: s.classTeacher ? new Types.ObjectId(s.classTeacher) : undefined,
+        }));
+      }
+
+      // Remove flat convenience fields before saving
+      const { section, classTeacher, capacity, roomNumber, ...rest } = createClassDto;
+
+      const classData: any = {
+        ...rest,
+        grade,
+        sections,
         subjects: createClassDto.subjects?.map((id) => new Types.ObjectId(id)),
         nextClass: createClassDto.nextClass
           ? new Types.ObjectId(createClassDto.nextClass)
           : undefined,
+        // Always set school - required by schema
+        school: new Types.ObjectId(schoolId),
       };
 
-      const newClass = new this.classModel(classData);
+      const newClass = new classModel(classData);
       await newClass.save();
+
+      // If classTeacher was set, also update the teacher record
+      if (createClassDto.classTeacher && sections.length > 0) {
+        try {
+          await teacherModel.findByIdAndUpdate(
+            createClassDto.classTeacher,
+            { classTeacherOf: newClass._id },
+          );
+        } catch (err) {
+          // Non-critical: teacher update failed but class was created
+        }
+      }
 
       return newClass;
     } catch (error) {
@@ -64,11 +175,16 @@ export class ClassesService {
     }
   }
 
-  async findAll(schoolId: string, query: QueryClassDto) {
+  async findAll(schoolId: string, query: QueryClassDto, context?: TenantContext) {
     const { grade, search, isActive, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const filter: any = { school: new Types.ObjectId(schoolId) };
+    const classModel = await this.getClassModel(context);
+
+    const filter: any = {};
+    if (!context?.isTenantUser) {
+      filter.school = new Types.ObjectId(schoolId);
+    }
 
     if (grade !== undefined) {
       filter.grade = grade;
@@ -86,14 +202,14 @@ export class ClassesService {
     }
 
     const [classes, total] = await Promise.all([
-      this.classModel
+      classModel
         .find(filter)
         .populate('subjects', 'name code type')
         .sort({ grade: 1, name: 1 })
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.classModel.countDocuments(filter),
+      classModel.countDocuments(filter),
     ]);
 
     return {
@@ -105,12 +221,14 @@ export class ClassesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const classData = await this.classModel
+    const classModel = await this.getClassModel(context);
+
+    const classData = await classModel
       .findById(id)
       .populate('subjects', 'name code type')
       .populate('nextClass', 'name grade')
@@ -123,22 +241,28 @@ export class ClassesService {
     return classData;
   }
 
-  async update(id: string, updateClassDto: UpdateClassDto) {
+  async update(id: string, updateClassDto: UpdateClassDto, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const existingClass = await this.classModel.findById(id);
+    const classModel = await this.getClassModel(context);
+
+    const existingClass = await classModel.findById(id);
     if (!existingClass) {
       throw new NotFoundException('Class not found');
     }
 
     if (updateClassDto.name && updateClassDto.name !== existingClass.name) {
-      const duplicateClass = await this.classModel.findOne({
-        school: existingClass.school,
+      const duplicateFilter: any = {
         name: updateClassDto.name,
         _id: { $ne: id },
-      });
+      };
+      if (!context?.isTenantUser) {
+        duplicateFilter.school = existingClass.school;
+      }
+
+      const duplicateClass = await classModel.findOne(duplicateFilter);
 
       if (duplicateClass) {
         throw new ConflictException('Class with this name already exists');
@@ -157,7 +281,7 @@ export class ClassesService {
       updateData.nextClass = new Types.ObjectId(updateClassDto.nextClass);
     }
 
-    const updatedClass = await this.classModel
+    const updatedClass = await classModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('subjects', 'name code type')
       .populate('nextClass', 'name grade')
@@ -166,17 +290,20 @@ export class ClassesService {
     return updatedClass;
   }
 
-  async remove(id: string) {
+  async remove(id: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const classData = await this.classModel.findById(id);
+    const classModel = await this.getClassModel(context);
+    const studentModel = await this.getStudentModel(context);
+
+    const classData = await classModel.findById(id);
     if (!classData) {
       throw new NotFoundException('Class not found');
     }
 
-    const studentCount = await this.studentModel.countDocuments({
+    const studentCount = await studentModel.countDocuments({
       currentClass: new Types.ObjectId(id),
     });
 
@@ -186,17 +313,20 @@ export class ClassesService {
       );
     }
 
-    await this.classModel.findByIdAndDelete(id);
+    await classModel.findByIdAndDelete(id);
 
     return { message: 'Class deleted successfully' };
   }
 
-  async getStudents(id: string, page: number = 1, limit: number = 20) {
+  async getStudents(id: string, page: number = 1, limit: number = 20, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const classData = await this.classModel.findById(id);
+    const classModel = await this.getClassModel(context);
+    const studentModel = await this.getStudentModel(context);
+
+    const classData = await classModel.findById(id);
     if (!classData) {
       throw new NotFoundException('Class not found');
     }
@@ -204,7 +334,7 @@ export class ClassesService {
     const skip = (page - 1) * limit;
 
     const [students, total] = await Promise.all([
-      this.studentModel
+      studentModel
         .find({ currentClass: new Types.ObjectId(id) })
         .select(
           'firstName lastName admissionNumber rollNumber status photo contact',
@@ -213,7 +343,7 @@ export class ClassesService {
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.studentModel.countDocuments({
+      studentModel.countDocuments({
         currentClass: new Types.ObjectId(id),
       }),
     ]);
@@ -227,12 +357,14 @@ export class ClassesService {
     };
   }
 
-  async getSubjects(id: string) {
+  async getSubjects(id: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const classData = await this.classModel
+    const classModel = await this.getClassModel(context);
+
+    const classData = await classModel
       .findById(id)
       .populate('subjects')
       .exec();
@@ -244,14 +376,17 @@ export class ClassesService {
     return classData.subjects;
   }
 
-  async addSubject(id: string, subjectId: string) {
+  async addSubject(id: string, subjectId: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id) || !Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid class or subject ID');
     }
 
+    const classModel = await this.getClassModel(context);
+    const subjectModel = await this.getSubjectModel(context);
+
     const [classData, subject] = await Promise.all([
-      this.classModel.findById(id),
-      this.subjectModel.findById(subjectId),
+      classModel.findById(id),
+      subjectModel.findById(subjectId),
     ]);
 
     if (!classData) {
@@ -280,18 +415,21 @@ export class ClassesService {
       await subject.save();
     }
 
-    return this.classModel
+    return classModel
       .findById(id)
       .populate('subjects', 'name code type')
       .exec();
   }
 
-  async removeSubject(id: string, subjectId: string) {
+  async removeSubject(id: string, subjectId: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id) || !Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid class or subject ID');
     }
 
-    const classData = await this.classModel.findById(id);
+    const classModel = await this.getClassModel(context);
+    const subjectModel = await this.getSubjectModel(context);
+
+    const classData = await classModel.findById(id);
     if (!classData) {
       throw new NotFoundException('Class not found');
     }
@@ -300,27 +438,30 @@ export class ClassesService {
       classData.subjects?.filter((s) => s.toString() !== subjectId) || [];
     await classData.save();
 
-    const subject = await this.subjectModel.findById(subjectId);
+    const subject = await subjectModel.findById(subjectId);
     if (subject) {
       subject.classes =
         subject.classes?.filter((c) => c.toString() !== id) || [];
       await subject.save();
     }
 
-    return this.classModel
+    return classModel
       .findById(id)
       .populate('subjects', 'name code type')
       .exec();
   }
 
-  async assignClassTeacher(id: string, sectionName: string, teacherId: string) {
+  async assignClassTeacher(id: string, sectionName: string, teacherId: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id) || !Types.ObjectId.isValid(teacherId)) {
       throw new BadRequestException('Invalid class or teacher ID');
     }
 
+    const classModel = await this.getClassModel(context);
+    const teacherModel = await this.getTeacherModel(context);
+
     const [classData, teacher] = await Promise.all([
-      this.classModel.findById(id),
-      this.teacherModel.findById(teacherId),
+      classModel.findById(id),
+      teacherModel.findById(teacherId),
     ]);
 
     if (!classData) {
@@ -342,15 +483,18 @@ export class ClassesService {
     teacher.classTeacherOf = new Types.ObjectId(id);
     await teacher.save();
 
-    return this.classModel.findById(id).exec();
+    return classModel.findById(id).exec();
   }
 
-  async removeClassTeacher(id: string, sectionName: string) {
+  async removeClassTeacher(id: string, sectionName: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const classData = await this.classModel.findById(id);
+    const classModel = await this.getClassModel(context);
+    const teacherModel = await this.getTeacherModel(context);
+
+    const classData = await classModel.findById(id);
     if (!classData) {
       throw new NotFoundException('Class not found');
     }
@@ -365,27 +509,30 @@ export class ClassesService {
     await classData.save();
 
     if (teacherId) {
-      const teacher = await this.teacherModel.findById(teacherId);
+      const teacher = await teacherModel.findById(teacherId);
       if (teacher && teacher.classTeacherOf?.toString() === id) {
         teacher.classTeacherOf = undefined;
         await teacher.save();
       }
     }
 
-    return this.classModel.findById(id).exec();
+    return classModel.findById(id).exec();
   }
 
-  async getStatistics(id: string) {
+  async getStatistics(id: string, context?: TenantContext) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const classData = await this.classModel.findById(id);
+    const classModel = await this.getClassModel(context);
+    const studentModel = await this.getStudentModel(context);
+
+    const classData = await classModel.findById(id);
     if (!classData) {
       throw new NotFoundException('Class not found');
     }
 
-    const studentCount = await this.studentModel.countDocuments({
+    const studentCount = await studentModel.countDocuments({
       currentClass: new Types.ObjectId(id),
     });
 
@@ -398,7 +545,7 @@ export class ClassesService {
 
     const sectionStats = await Promise.all(
       (classData.sections || []).map(async (section) => {
-        const sectionStudents = await this.studentModel.countDocuments({
+        const sectionStudents = await studentModel.countDocuments({
           currentClass: new Types.ObjectId(id),
           currentSection: section.name,
         });

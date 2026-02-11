@@ -13,15 +13,22 @@ import { Type } from 'class-transformer';
 import { AttendanceStatus } from '../../../common/enums/student-status.enum';
 
 class StudentAttendanceRecordDto {
-  @ApiProperty({ description: 'Student ID' })
-  @IsNotEmpty()
-  @IsMongoId()
-  student: string;
+  @ApiPropertyOptional({ description: 'Student ID (alias: studentId)' })
+  @IsOptional()
+  @IsString()
+  student?: string;
 
-  @ApiProperty({
-    description: 'Attendance status',
-    enum: AttendanceStatus,
-  })
+  @ApiPropertyOptional({ description: 'Student ID (alias for student)' })
+  @IsOptional()
+  @IsString()
+  studentId?: string;
+
+  @ApiPropertyOptional({ description: 'Student name (for display, ignored by backend)' })
+  @IsOptional()
+  @IsString()
+  studentName?: string;
+
+  @ApiProperty({ description: 'Attendance status', enum: AttendanceStatus })
   @IsNotEmpty()
   @IsEnum(AttendanceStatus)
   status: AttendanceStatus;
@@ -40,43 +47,41 @@ class StudentAttendanceRecordDto {
   @IsOptional()
   @IsString()
   remarks?: string;
+
+  @ApiPropertyOptional({ description: 'Note (alias for remarks)' })
+  @IsOptional()
+  @IsString()
+  note?: string;
 }
 
 export class MarkAttendanceDto {
   @ApiProperty({ description: 'Class ID' })
   @IsNotEmpty()
-  @IsMongoId()
+  @IsString()
   classId: string;
 
-  @ApiProperty({ description: 'Section name (e.g., A, B, C)' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ description: 'Section name (e.g., A, B, C)' })
+  @IsOptional()
   @IsString()
-  section: string;
+  section?: string;
 
   @ApiProperty({ description: 'Attendance date (YYYY-MM-DD)' })
   @IsNotEmpty()
-  @IsDateString()
+  @IsString()
   date: string;
 
-  @ApiProperty({
-    description: 'Array of student attendance records',
-    type: [StudentAttendanceRecordDto],
-  })
+  @ApiProperty({ description: 'Array of student attendance records', type: [StudentAttendanceRecordDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => StudentAttendanceRecordDto)
   records: StudentAttendanceRecordDto[];
 
-  @ApiPropertyOptional({
-    description: 'Subject ID for subject-wise attendance',
-  })
+  @ApiPropertyOptional({ description: 'Subject ID for subject-wise attendance' })
   @IsOptional()
-  @IsMongoId()
+  @IsString()
   subjectId?: string;
 
-  @ApiPropertyOptional({
-    description: 'Period number for period-wise attendance',
-  })
+  @ApiPropertyOptional({ description: 'Period number for period-wise attendance' })
   @IsOptional()
   @IsString()
   period?: string;

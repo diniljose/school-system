@@ -35,7 +35,7 @@ export class ExamsController {
   constructor(private readonly examsService: ExamsService) {}
 
   @Post()
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Create a new exam' })
   @ApiResponse({ status: 201, description: 'Exam created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -48,7 +48,7 @@ export class ExamsController {
 
   @Get()
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STUDENT,
@@ -65,7 +65,7 @@ export class ExamsController {
 
   @Get('upcoming')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STUDENT,
@@ -82,7 +82,7 @@ export class ExamsController {
 
   @Get(':id')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STUDENT,
@@ -100,7 +100,7 @@ export class ExamsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Update exam' })
   @ApiResponse({ status: 200, description: 'Exam updated successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })
@@ -114,7 +114,7 @@ export class ExamsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Delete exam' })
   @ApiResponse({ status: 200, description: 'Exam deleted successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })
@@ -127,7 +127,7 @@ export class ExamsController {
   }
 
   @Post(':id/assign-class/:classId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Assign exam to a class' })
   @ApiResponse({ status: 200, description: 'Class assigned successfully' })
   @ApiResponse({ status: 404, description: 'Exam or class not found' })
@@ -142,7 +142,7 @@ export class ExamsController {
   }
 
   @Delete(':id/classes/:classId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Remove class from exam' })
   @ApiResponse({ status: 200, description: 'Class removed successfully' })
   @ApiResponse({ status: 404, description: 'Exam or class not found' })
@@ -157,7 +157,7 @@ export class ExamsController {
   }
 
   @Post(':id/schedule')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Add schedule item to exam' })
   @ApiResponse({ status: 201, description: 'Schedule added successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })
@@ -171,7 +171,7 @@ export class ExamsController {
   }
 
   @Patch(':id/schedule/:scheduleId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Update schedule item' })
   @ApiResponse({ status: 200, description: 'Schedule updated successfully' })
   @ApiResponse({ status: 404, description: 'Exam or schedule item not found' })
@@ -192,7 +192,7 @@ export class ExamsController {
   }
 
   @Delete(':id/schedule/:scheduleId')
-  @Roles(UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
   @ApiOperation({ summary: 'Remove schedule item from exam' })
   @ApiResponse({ status: 200, description: 'Schedule removed successfully' })
   @ApiResponse({ status: 404, description: 'Exam or schedule item not found' })
@@ -208,7 +208,7 @@ export class ExamsController {
 
   @Get(':id/timetable')
   @Roles(
-    UserRole.SCHOOL_ADMIN,
+    UserRole.PRINCIPAL,
     UserRole.PRINCIPAL,
     UserRole.TEACHER,
     UserRole.STUDENT,
@@ -225,3 +225,4 @@ export class ExamsController {
     return this.examsService.getExamTimetable(id, schoolId);
   }
 }
+

@@ -18,6 +18,13 @@ import {
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { QuerySubjectDto } from './dto/query-subject.dto';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
+
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class SubjectsService {
@@ -25,32 +32,75 @@ export class SubjectsService {
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  private async getSubjectModel(
+    context?: TenantContext,
+  ): Promise<Model<SubjectDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<SubjectDocument>(
+        context.schoolCode,
+        'Subject',
+      );
+    }
+    return this.subjectModel;
+  }
+
+  private async getClassModel(
+    context?: TenantContext,
+  ): Promise<Model<ClassDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ClassDocument>(
+        context.schoolCode,
+        'Class',
+      );
+    }
+    return this.classModel;
+  }
+
+  private async getTeacherModel(
+    context?: TenantContext,
+  ): Promise<Model<TeacherDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<TeacherDocument>(
+        context.schoolCode,
+        'Teacher',
+      );
+    }
+    return this.teacherModel;
+  }
 
   async create(
     createSubjectDto: CreateSubjectDto,
     schoolId: string,
+    context?: TenantContext,
   ): Promise<Subject> {
     try {
-      const existingSubject = await this.subjectModel.findOne({
-        school: new Types.ObjectId(schoolId),
-        code: createSubjectDto.code,
-      });
+      const subjectModel = await this.getSubjectModel(context);
+      
+      const filter: any = { code: createSubjectDto.code };
+      if (!context?.isTenantUser) {
+        filter.school = new Types.ObjectId(schoolId);
+      }
+      
+      const existingSubject = await subjectModel.findOne(filter);
 
       if (existingSubject) {
         throw new ConflictException('Subject with this code already exists');
       }
 
-      const subjectData = {
+      const subjectData: any = {
         ...createSubjectDto,
-        school: new Types.ObjectId(schoolId),
         classes: createSubjectDto.classes?.map((id) => new Types.ObjectId(id)),
         teachers: createSubjectDto.teachers?.map(
           (id) => new Types.ObjectId(id),
         ),
+        // Always set school - required by schema
+        school: new Types.ObjectId(schoolId),
       };
 
-      const newSubject = new this.subjectModel(subjectData);
+      const newSubject = new subjectModel(subjectData);
       await newSubject.save();
 
       return newSubject;
@@ -67,6 +117,7 @@ export class SubjectsService {
   async findAll(
     schoolId: string,
     query: QuerySubjectDto,
+    context?: TenantContext,
   ): Promise<{
     data: Subject[];
     meta: { total: number; page: number; limit: number; totalPages: number };
@@ -82,7 +133,12 @@ export class SubjectsService {
     } = query;
     const skip = (page - 1) * limit;
 
-    const filter: any = { school: new Types.ObjectId(schoolId) };
+    const subjectModel = await this.getSubjectModel(context);
+    const filter: any = {};
+    
+    if (!context?.isTenantUser) {
+      filter.school = new Types.ObjectId(schoolId);
+    }
 
     if (type) {
       filter.type = type;
@@ -109,7 +165,7 @@ export class SubjectsService {
     }
 
     const [subjects, total] = await Promise.all([
-      this.subjectModel
+      subjectModel
         .find(filter)
         .populate('classes', 'name grade')
         .populate('teachers', 'firstName lastName employeeId')
@@ -117,7 +173,7 @@ export class SubjectsService {
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.subjectModel.countDocuments(filter),
+      subjectModel.countDocuments(filter),
     ]);
 
     return {
@@ -131,12 +187,13 @@ export class SubjectsService {
     };
   }
 
-  async findOne(id: string): Promise<Subject> {
+  async findOne(id: string, context?: TenantContext): Promise<Subject> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
 
-    const subject = await this.subjectModel
+    const subjectModel = await this.getSubjectModel(context);
+    const subject = await subjectModel
       .findById(id)
       .populate('classes', 'name grade description')
       .populate('teachers', 'firstName lastName employeeId email phone')
@@ -152,23 +209,29 @@ export class SubjectsService {
   async update(
     id: string,
     updateSubjectDto: UpdateSubjectDto,
+    context?: TenantContext,
   ): Promise<Subject> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
 
-    const subject = await this.subjectModel.findById(id);
+    const subjectModel = await this.getSubjectModel(context);
+    const subject = await subjectModel.findById(id);
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
     if (updateSubjectDto.code && updateSubjectDto.code !== subject.code) {
-      const existingSubject = await this.subjectModel.findOne({
-        school: subject.school,
+      const filter: any = {
         code: updateSubjectDto.code,
         _id: { $ne: id },
-      });
+      };
+      if (!context?.isTenantUser) {
+        filter.school = subject.school;
+      }
+      
+      const existingSubject = await subjectModel.findOne(filter);
 
       if (existingSubject) {
         throw new ConflictException('Subject with this code already exists');
@@ -189,7 +252,7 @@ export class SubjectsService {
       );
     }
 
-    const updatedSubject = await this.subjectModel
+    const updatedSubject = await subjectModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('classes', 'name grade')
       .populate('teachers', 'firstName lastName employeeId')
@@ -198,25 +261,29 @@ export class SubjectsService {
     return updatedSubject;
   }
 
-  async remove(id: string): Promise<{ message: string }> {
+  async remove(id: string, context?: TenantContext): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
 
-    const subject = await this.subjectModel.findById(id);
+    const subjectModel = await this.getSubjectModel(context);
+    const classModel = await this.getClassModel(context);
+    const teacherModel = await this.getTeacherModel(context);
+    
+    const subject = await subjectModel.findById(id);
 
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
-    await this.subjectModel.findByIdAndDelete(id);
+    await subjectModel.findByIdAndDelete(id);
 
-    await this.classModel.updateMany(
+    await classModel.updateMany(
       { subjects: new Types.ObjectId(id) },
       { $pull: { subjects: new Types.ObjectId(id) } },
     );
 
-    await this.teacherModel.updateMany(
+    await teacherModel.updateMany(
       { subjects: new Types.ObjectId(id) },
       { $pull: { subjects: new Types.ObjectId(id) } },
     );
@@ -227,6 +294,7 @@ export class SubjectsService {
   async assignToClass(
     subjectId: string,
     classId: string,
+    context?: TenantContext,
   ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
@@ -235,17 +303,20 @@ export class SubjectsService {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const subject = await this.subjectModel.findById(subjectId);
+    const subjectModel = await this.getSubjectModel(context);
+    const classModel = await this.getClassModel(context);
+    
+    const subject = await subjectModel.findById(subjectId);
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
-    const classEntity = await this.classModel.findById(classId);
+    const classEntity = await classModel.findById(classId);
     if (!classEntity) {
       throw new NotFoundException('Class not found');
     }
 
-    if (subject.school.toString() !== classEntity.school.toString()) {
+    if (!context?.isTenantUser && subject.school.toString() !== classEntity.school.toString()) {
       throw new BadRequestException('Subject and class must be in same school');
     }
 
@@ -255,11 +326,11 @@ export class SubjectsService {
       throw new ConflictException('Subject already assigned to this class');
     }
 
-    await this.subjectModel.findByIdAndUpdate(subjectId, {
+    await subjectModel.findByIdAndUpdate(subjectId, {
       $addToSet: { classes: classObjectId },
     });
 
-    await this.classModel.findByIdAndUpdate(classId, {
+    await classModel.findByIdAndUpdate(classId, {
       $addToSet: { subjects: new Types.ObjectId(subjectId) },
     });
 
@@ -269,6 +340,7 @@ export class SubjectsService {
   async removeFromClass(
     subjectId: string,
     classId: string,
+    context?: TenantContext,
   ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
@@ -277,18 +349,21 @@ export class SubjectsService {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const subject = await this.subjectModel.findById(subjectId);
+    const subjectModel = await this.getSubjectModel(context);
+    const classModel = await this.getClassModel(context);
+    
+    const subject = await subjectModel.findById(subjectId);
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
     const classObjectId = new Types.ObjectId(classId);
 
-    await this.subjectModel.findByIdAndUpdate(subjectId, {
+    await subjectModel.findByIdAndUpdate(subjectId, {
       $pull: { classes: classObjectId },
     });
 
-    await this.classModel.findByIdAndUpdate(classId, {
+    await classModel.findByIdAndUpdate(classId, {
       $pull: { subjects: new Types.ObjectId(subjectId) },
     });
 
@@ -298,6 +373,7 @@ export class SubjectsService {
   async assignTeacher(
     subjectId: string,
     teacherId: string,
+    context?: TenantContext,
   ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
@@ -306,17 +382,20 @@ export class SubjectsService {
       throw new BadRequestException('Invalid teacher ID');
     }
 
-    const subject = await this.subjectModel.findById(subjectId);
+    const subjectModel = await this.getSubjectModel(context);
+    const teacherModel = await this.getTeacherModel(context);
+    
+    const subject = await subjectModel.findById(subjectId);
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
-    const teacher = await this.teacherModel.findById(teacherId);
+    const teacher = await teacherModel.findById(teacherId);
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
     }
 
-    if (subject.school.toString() !== teacher.school.toString()) {
+    if (!context?.isTenantUser && subject.school.toString() !== teacher.school.toString()) {
       throw new BadRequestException(
         'Subject and teacher must be in same school',
       );
@@ -328,11 +407,11 @@ export class SubjectsService {
       throw new ConflictException('Teacher already assigned to this subject');
     }
 
-    await this.subjectModel.findByIdAndUpdate(subjectId, {
+    await subjectModel.findByIdAndUpdate(subjectId, {
       $addToSet: { teachers: teacherObjectId },
     });
 
-    await this.teacherModel.findByIdAndUpdate(teacherId, {
+    await teacherModel.findByIdAndUpdate(teacherId, {
       $addToSet: { subjects: new Types.ObjectId(subjectId) },
     });
 
@@ -342,6 +421,7 @@ export class SubjectsService {
   async removeTeacher(
     subjectId: string,
     teacherId: string,
+    context?: TenantContext,
   ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(subjectId)) {
       throw new BadRequestException('Invalid subject ID');
@@ -350,30 +430,34 @@ export class SubjectsService {
       throw new BadRequestException('Invalid teacher ID');
     }
 
-    const subject = await this.subjectModel.findById(subjectId);
+    const subjectModel = await this.getSubjectModel(context);
+    const teacherModel = await this.getTeacherModel(context);
+    
+    const subject = await subjectModel.findById(subjectId);
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
 
     const teacherObjectId = new Types.ObjectId(teacherId);
 
-    await this.subjectModel.findByIdAndUpdate(subjectId, {
+    await subjectModel.findByIdAndUpdate(subjectId, {
       $pull: { teachers: teacherObjectId },
     });
 
-    await this.teacherModel.findByIdAndUpdate(teacherId, {
+    await teacherModel.findByIdAndUpdate(teacherId, {
       $pull: { subjects: new Types.ObjectId(subjectId) },
     });
 
     return { message: 'Teacher removed from subject successfully' };
   }
 
-  async getSubjectsByClass(classId: string): Promise<Subject[]> {
+  async getSubjectsByClass(classId: string, context?: TenantContext): Promise<Subject[]> {
     if (!Types.ObjectId.isValid(classId)) {
       throw new BadRequestException('Invalid class ID');
     }
 
-    const subjects = await this.subjectModel
+    const subjectModel = await this.getSubjectModel(context);
+    const subjects = await subjectModel
       .find({ classes: new Types.ObjectId(classId) })
       .populate('teachers', 'firstName lastName employeeId')
       .sort({ name: 1 })
@@ -382,12 +466,13 @@ export class SubjectsService {
     return subjects;
   }
 
-  async getSubjectsByTeacher(teacherId: string): Promise<Subject[]> {
+  async getSubjectsByTeacher(teacherId: string, context?: TenantContext): Promise<Subject[]> {
     if (!Types.ObjectId.isValid(teacherId)) {
       throw new BadRequestException('Invalid teacher ID');
     }
 
-    const subjects = await this.subjectModel
+    const subjectModel = await this.getSubjectModel(context);
+    const subjects = await subjectModel
       .find({ teachers: new Types.ObjectId(teacherId) })
       .populate('classes', 'name grade')
       .sort({ name: 1 })

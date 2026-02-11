@@ -1,0 +1,1061 @@
+{
+  "info": {
+    "name": "School Management System API",
+    "description": "Complete enterprise-level multi-tenant school management platform API.\n\nThis collection provides a full end-to-end test flow:\n1. Register a school (creates school + admin user)\n2. Login as school admin\n3. Create teachers\n4. Create subjects\n5. Create classes (with class teacher assignment)\n6. Create parents\n7. Create students\n8. Link parents to students\n9. Test all CRUD operations\n\nRun requests in order for proper flow testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "schoolId", "value": "" },
+    { "key": "schoolCode", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "teacherId", "value": "" },
+    { "key": "teacher2Id", "value": "" },
+    { "key": "subjectId", "value": "" },
+    { "key": "subject2Id", "value": "" },
+    { "key": "classId", "value": "" },
+    { "key": "class2Id", "value": "" },
+    { "key": "studentId", "value": "" },
+    { "key": "student2Id", "value": "" },
+    { "key": "parentId", "value": "" },
+    { "key": "parent2Id", "value": "" },
+    { "key": "academicYearId", "value": "" },
+    { "key": "examId", "value": "" },
+    { "key": "feeId", "value": "" },
+    { "key": "attendanceId", "value": "" },
+    { "key": "resultId", "value": "" },
+    { "key": "timetableId", "value": "" },
+    { "key": "notificationId", "value": "" },
+    { "key": "subscriptionId", "value": "" },
+    { "key": "promotionId", "value": "" },
+    { "key": "transportId", "value": "" },
+    { "key": "transferId", "value": "" },
+    { "key": "settingsId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}" }]
+  },
+  "item": [
+    {
+      "name": "1. Auth & School Setup",
+      "description": "Register school and get authenticated",
+      "item": [
+        {
+          "name": "1.1 Register School (Self-Service)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data) {",
+                  "  const data = res.data;",
+                  "  if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);",
+                  "  if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "  if (data.school) {",
+                  "    pm.collectionVariables.set('schoolId', data.school.id);",
+                  "    pm.collectionVariables.set('schoolCode', data.school.code);",
+                  "  }",
+                  "  if (data.user) pm.collectionVariables.set('userId', data.user.id);",
+                  "} else {",
+                  "  if (res.accessToken) pm.collectionVariables.set('accessToken', res.accessToken);",
+                  "  if (res.refreshToken) pm.collectionVariables.set('refreshToken', res.refreshToken);",
+                  "  if (res.school) {",
+                  "    pm.collectionVariables.set('schoolId', res.school.id);",
+                  "    pm.collectionVariables.set('schoolCode', res.school.code);",
+                  "  }",
+                  "  if (res.user) pm.collectionVariables.set('userId', res.user.id);",
+                  "}",
+                  "pm.test('School registered successfully', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register-school",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Rajesh\",\n  \"lastName\": \"Kumar\",\n  \"email\": \"rajesh.kumar@greenvalley.edu\",\n  \"password\": \"Admin@123456\",\n  \"schoolName\": \"Green Valley International School\",\n  \"phoneNumber\": \"+919876543210\",\n  \"schoolAddress\": \"123 Education Lane, Bangalore, Karnataka 560001\",\n  \"schoolEmail\": \"info@greenvalley.edu\",\n  \"schoolPhone\": \"+918012345678\"\n}"
+            },
+            "auth": { "type": "noauth" }
+          }
+        },
+        {
+          "name": "1.2 Login as School Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);",
+                  "if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "if (data.user) {",
+                  "  pm.collectionVariables.set('userId', data.user.id);",
+                  "  if (data.user.school) {",
+                  "    pm.collectionVariables.set('schoolId', data.user.school.id);",
+                  "    pm.collectionVariables.set('schoolCode', data.user.school.code);",
+                  "  }",
+                  "}",
+                  "pm.test('Login successful', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rajesh.kumar@greenvalley.edu\",\n  \"password\": \"Admin@123456\"\n}"
+            },
+            "auth": { "type": "noauth" }
+          }
+        },
+        {
+          "name": "1.3 Get Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Profile retrieved', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/profile"
+          }
+        },
+        {
+          "name": "1.4 Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);",
+                  "pm.test('Token refreshed', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/refresh-token",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "auth": { "type": "noauth" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Teachers",
+      "description": "Create and manage teachers",
+      "item": [
+        {
+          "name": "2.1 Create Teacher - Anita Sharma (Math)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('teacherId', id);",
+                  "pm.test('Teacher 1 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/teachers",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Anita\",\n  \"lastName\": \"Sharma\",\n  \"email\": \"anita.sharma@greenvalley.edu\",\n  \"phone\": \"+919876543001\",\n  \"dateOfBirth\": \"1985-06-15\",\n  \"gender\": \"female\",\n  \"joiningDate\": \"2020-04-01\",\n  \"designation\": \"Senior Teacher\",\n  \"department\": \"Mathematics\",\n  \"address\": {\n    \"street\": \"45 MG Road\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"country\": \"India\",\n    \"zipCode\": \"560001\"\n  },\n  \"qualifications\": [\n    {\n      \"degree\": \"M.Sc Mathematics\",\n      \"institution\": \"Bangalore University\",\n      \"year\": 2008,\n      \"grade\": \"First Class with Distinction\"\n    },\n    {\n      \"degree\": \"B.Ed\",\n      \"institution\": \"IGNOU\",\n      \"year\": 2009,\n      \"grade\": \"First Class\"\n    }\n  ],\n  \"experience\": [\n    {\n      \"institution\": \"DPS Bangalore\",\n      \"designation\": \"Math Teacher\",\n      \"fromDate\": \"2010-06-01\",\n      \"toDate\": \"2020-03-31\",\n      \"description\": \"Taught classes 6-10 Mathematics\"\n    }\n  ],\n  \"salary\": {\n    \"basic\": 55000,\n    \"allowances\": 12000,\n    \"deductions\": 5000,\n    \"bankAccount\": \"1234567890\",\n    \"bankName\": \"State Bank of India\",\n    \"ifscCode\": \"SBIN0001234\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "2.2 Create Teacher - Vikram Patel (English)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('teacher2Id', id);",
+                  "pm.test('Teacher 2 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/teachers",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Vikram\",\n  \"lastName\": \"Patel\",\n  \"email\": \"vikram.patel@greenvalley.edu\",\n  \"phone\": \"+919876543002\",\n  \"dateOfBirth\": \"1982-11-20\",\n  \"gender\": \"male\",\n  \"joiningDate\": \"2019-07-15\",\n  \"designation\": \"Head of Department\",\n  \"department\": \"English\",\n  \"address\": {\n    \"street\": \"78 Residency Road\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"country\": \"India\",\n    \"zipCode\": \"560025\"\n  },\n  \"qualifications\": [\n    {\n      \"degree\": \"M.A English Literature\",\n      \"institution\": \"Mysore University\",\n      \"year\": 2005,\n      \"grade\": \"First Class\"\n    },\n    {\n      \"degree\": \"B.Ed\",\n      \"institution\": \"Christ University\",\n      \"year\": 2006,\n      \"grade\": \"First Class with Distinction\"\n    }\n  ],\n  \"salary\": {\n    \"basic\": 62000,\n    \"allowances\": 15000,\n    \"deductions\": 6000,\n    \"bankAccount\": \"9876543210\",\n    \"bankName\": \"HDFC Bank\",\n    \"ifscCode\": \"HDFC0001234\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "2.3 List All Teachers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Teachers retrieved', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "  const res = pm.response.json();",
+                  "  const data = res.data || res;",
+                  "  const teachers = data.data || data;",
+                  "  pm.expect(Array.isArray(teachers) ? teachers.length : 0).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/teachers"
+          }
+        },
+        {
+          "name": "2.4 Get Teacher by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/teachers/{{teacherId}}"
+          }
+        },
+        {
+          "name": "2.5 Update Teacher",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/teachers/{{teacherId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"designation\": \"Senior Mathematics Teacher\",\n  \"department\": \"Mathematics & Statistics\"\n}"
+            }
+          }
+        },
+        {
+          "name": "2.6 Get Teacher Schedule",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/teachers/{{teacherId}}/schedule"
+          }
+        },
+        {
+          "name": "2.7 Get Teacher Statistics",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/teachers/{{teacherId}}/statistics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Subjects",
+      "description": "Create and manage subjects",
+      "item": [
+        {
+          "name": "3.1 Create Subject - Mathematics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('subjectId', id);",
+                  "pm.test('Subject 1 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/subjects",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mathematics\",\n  \"code\": \"MATH-101\",\n  \"description\": \"Core mathematics covering algebra, geometry, and arithmetic\",\n  \"type\": \"core\",\n  \"credits\": 5,\n  \"maxMarks\": 100,\n  \"passingMarks\": 35,\n  \"theoryMarks\": 80,\n  \"practicalMarks\": 20,\n  \"hoursPerWeek\": 6,\n  \"isMandatory\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "3.2 Create Subject - English",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('subject2Id', id);",
+                  "pm.test('Subject 2 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/subjects",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"English\",\n  \"code\": \"ENG-101\",\n  \"description\": \"English language and literature\",\n  \"type\": \"core\",\n  \"credits\": 5,\n  \"maxMarks\": 100,\n  \"passingMarks\": 35,\n  \"theoryMarks\": 80,\n  \"practicalMarks\": 20,\n  \"hoursPerWeek\": 6,\n  \"isMandatory\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "3.3 List All Subjects",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/subjects"
+          }
+        },
+        {
+          "name": "3.4 Assign Teacher to Subject (Math to Anita)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/subjects/{{subjectId}}/assign-teacher/{{teacherId}}"
+          }
+        },
+        {
+          "name": "3.5 Assign Teacher to Subject (English to Vikram)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/subjects/{{subject2Id}}/assign-teacher/{{teacher2Id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Classes",
+      "description": "Create and manage classes with class teacher assignment",
+      "item": [
+        {
+          "name": "4.1 Create Class - Grade 5 (flat fields with classTeacher)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('classId', id);",
+                  "pm.test('Class 1 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/classes",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grade 5\",\n  \"description\": \"Fifth grade standard class\",\n  \"section\": \"A\",\n  \"capacity\": 40,\n  \"classTeacher\": \"{{teacherId}}\",\n  \"subjects\": [\"{{subjectId}}\", \"{{subject2Id}}\"],\n  \"feeStructure\": {\n    \"tuitionFee\": 25000,\n    \"admissionFee\": 5000,\n    \"examFee\": 2000,\n    \"libraryFee\": 1000,\n    \"labFee\": 0,\n    \"sportsFee\": 1500\n  },\n  \"promotionCriteria\": {\n    \"minimumPercentage\": 35,\n    \"minimumAttendance\": 75\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "4.2 Create Class - Grade 6 (nested sections)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('class2Id', id);",
+                  "pm.test('Class 2 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/classes",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grade 6\",\n  \"description\": \"Sixth grade with two sections\",\n  \"sections\": [\n    {\n      \"name\": \"A\",\n      \"capacity\": 35,\n      \"classTeacher\": \"{{teacher2Id}}\"\n    },\n    {\n      \"name\": \"B\",\n      \"capacity\": 35\n    }\n  ],\n  \"subjects\": [\"{{subjectId}}\", \"{{subject2Id}}\"],\n  \"feeStructure\": {\n    \"tuitionFee\": 28000,\n    \"admissionFee\": 5000,\n    \"examFee\": 2500,\n    \"libraryFee\": 1200,\n    \"labFee\": 500,\n    \"sportsFee\": 1500\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "4.3 List All Classes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Classes retrieved', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/classes"
+          }
+        },
+        {
+          "name": "4.4 Get Class by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/classes/{{classId}}"
+          }
+        },
+        {
+          "name": "4.5 Get Class Students",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/classes/{{classId}}/students"
+          }
+        },
+        {
+          "name": "4.6 Get Class Subjects",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/classes/{{classId}}/subjects"
+          }
+        },
+        {
+          "name": "4.7 Get Class Statistics",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/classes/{{classId}}/statistics"
+          }
+        },
+        {
+          "name": "4.8 Assign Class Teacher to Section B",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/classes/{{class2Id}}/sections/B/teacher/{{teacherId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Parents",
+      "description": "Create and manage parent records",
+      "item": [
+        {
+          "name": "5.1 Create Parent - Father (Suresh Verma)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('parentId', id);",
+                  "pm.test('Parent 1 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/parents",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Suresh\",\n  \"lastName\": \"Verma\",\n  \"relationship\": \"father\",\n  \"email\": \"suresh.verma@gmail.com\",\n  \"phone\": \"+919876543100\",\n  \"alternatePhone\": \"+919876543101\",\n  \"occupation\": \"Software Engineer\",\n  \"workplace\": \"Infosys Technologies\",\n  \"address\": {\n    \"street\": \"12 Koramangala 4th Block\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"country\": \"India\",\n    \"zipCode\": \"560034\"\n  },\n  \"isPrimary\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "5.2 Create Parent - Mother (Meena Verma)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('parent2Id', id);",
+                  "pm.test('Parent 2 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/parents",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Meena\",\n  \"lastName\": \"Verma\",\n  \"relationship\": \"mother\",\n  \"email\": \"meena.verma@gmail.com\",\n  \"phone\": \"+919876543102\",\n  \"occupation\": \"Doctor\",\n  \"workplace\": \"Apollo Hospital\",\n  \"address\": {\n    \"street\": \"12 Koramangala 4th Block\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"country\": \"India\",\n    \"zipCode\": \"560034\"\n  },\n  \"isPrimary\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "5.3 List All Parents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Parents retrieved', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/parents"
+          }
+        },
+        {
+          "name": "5.4 Get Parent by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/parents/{{parentId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Students",
+      "description": "Create and manage students, assign to classes",
+      "item": [
+        {
+          "name": "6.1 Create Student - Arjun Verma",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('studentId', id);",
+                  "pm.test('Student 1 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/students",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Arjun\",\n  \"lastName\": \"Verma\",\n  \"dateOfBirth\": \"2015-03-22\",\n  \"gender\": \"male\",\n  \"email\": \"arjun.verma@greenvalley.edu\",\n  \"phone\": \"+919876543200\",\n  \"address\": {\n    \"street\": \"12 Koramangala 4th Block\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"country\": \"India\",\n    \"zipCode\": \"560034\"\n  },\n  \"contact\": {\n    \"email\": \"suresh.verma@gmail.com\",\n    \"phone\": \"+919876543100\",\n    \"emergencyContact\": \"+919876543101\"\n  },\n  \"guardianName\": \"Suresh Verma\",\n  \"guardianRelation\": \"Father\",\n  \"guardianPhone\": \"+919876543100\",\n  \"guardianEmail\": \"suresh.verma@gmail.com\",\n  \"nationality\": \"Indian\",\n  \"religion\": \"Hindu\",\n  \"category\": \"General\",\n  \"motherTongue\": \"Hindi\",\n  \"admissionDate\": \"2024-04-01\",\n  \"previousSchool\": \"Little Stars Kindergarten\",\n  \"previousClass\": \"UKG\",\n  \"healthInfo\": {\n    \"bloodGroup\": \"B+\",\n    \"allergies\": [],\n    \"medicalConditions\": [],\n    \"medications\": []\n  },\n  \"currentClass\": \"{{classId}}\",\n  \"currentSection\": \"A\",\n  \"rollNumber\": \"001\"\n}"
+            }
+          }
+        },
+        {
+          "name": "6.2 Create Student - Priya Verma",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "const id = data._id || data.id;",
+                  "if (id) pm.collectionVariables.set('student2Id', id);",
+                  "pm.test('Student 2 created', function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/students",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Priya\",\n  \"lastName\": \"Verma\",\n  \"dateOfBirth\": \"2014-08-10\",\n  \"gender\": \"female\",\n  \"email\": \"priya.verma@greenvalley.edu\",\n  \"address\": {\n    \"street\": \"12 Koramangala 4th Block\",\n    \"city\": \"Bangalore\",\n    \"state\": \"Karnataka\",\n    \"country\": \"India\",\n    \"zipCode\": \"560034\"\n  },\n  \"contact\": {\n    \"email\": \"suresh.verma@gmail.com\",\n    \"phone\": \"+919876543100\",\n    \"emergencyContact\": \"+919876543102\"\n  },\n  \"guardianName\": \"Meena Verma\",\n  \"guardianRelation\": \"Mother\",\n  \"guardianPhone\": \"+919876543102\",\n  \"nationality\": \"Indian\",\n  \"religion\": \"Hindu\",\n  \"motherTongue\": \"Hindi\",\n  \"admissionDate\": \"2023-04-01\",\n  \"currentClass\": \"{{class2Id}}\",\n  \"currentSection\": \"A\",\n  \"rollNumber\": \"001\"\n}"
+            }
+          }
+        },
+        {
+          "name": "6.3 List All Students",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Students retrieved', function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students"
+          }
+        },
+        {
+          "name": "6.4 Get Student by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students/{{studentId}}"
+          }
+        },
+        {
+          "name": "6.5 List Students by Class",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students?classId={{classId}}"
+          }
+        },
+        {
+          "name": "6.6 Update Student",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/students/{{studentId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543201\",\n  \"rollNumber\": \"005\"\n}"
+            }
+          }
+        },
+        {
+          "name": "6.7 Get Student Statistics",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students/stats"
+          }
+        },
+        {
+          "name": "6.8 Get Academic History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students/{{studentId}}/academic-history"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Link Parents & Students",
+      "description": "Link parent-student relationships",
+      "item": [
+        {
+          "name": "7.1 Link Father to Arjun",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Father linked', function() {",
+                  "  const code = pm.response.code;",
+                  "  pm.expect(code === 200 || code === 201).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/parents/{{parentId}}/link-child",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"setAsPrimary\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "7.2 Link Mother to Arjun",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/parents/{{parent2Id}}/link-child",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"setAsPrimary\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "7.3 Link Father to Priya",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/parents/{{parentId}}/link-child",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{student2Id}}\",\n  \"setAsPrimary\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "7.4 Link Mother to Priya",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/parents/{{parent2Id}}/link-child",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{student2Id}}\",\n  \"setAsPrimary\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "7.5 Get Parents by Student",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/parents/by-student/{{studentId}}"
+          }
+        },
+        {
+          "name": "7.6 Verify Parent (children linked)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/parents/{{parentId}}"
+          }
+        },
+        {
+          "name": "7.7 Verify Student (parents linked)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students/{{studentId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Teacher-Class Assignments",
+      "description": "Assign teachers to classes and verify",
+      "item": [
+        {
+          "name": "8.1 Assign Anita to Grade 5",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/teachers/{{teacherId}}/assign-class",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classId\": \"{{classId}}\",\n  \"setAsClassTeacher\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "8.2 Assign Vikram to Grade 6",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/teachers/{{teacher2Id}}/assign-class",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classId\": \"{{class2Id}}\",\n  \"setAsClassTeacher\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "8.3 Get Teacher Schedule (Anita)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/teachers/{{teacherId}}/schedule"
+          }
+        },
+        {
+          "name": "8.4 Get Subjects by Class (Grade 5)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/subjects/by-class/{{classId}}"
+          }
+        },
+        {
+          "name": "8.5 Get Subjects by Teacher (Anita)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/subjects/by-teacher/{{teacherId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. School Settings",
+      "description": "Manage school settings and features",
+      "item": [
+        {
+          "name": "9.1 Get School by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/schools/{{schoolId}}"
+          }
+        },
+        {
+          "name": "9.2 Update School Settings",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/schools/{{schoolId}}/settings",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"INR\",\n  \"timezone\": \"Asia/Kolkata\",\n  \"dateFormat\": \"DD/MM/YYYY\",\n  \"workingDays\": [\"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "9.3 Update School Features",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/schools/{{schoolId}}/features",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attendance\": true,\n  \"fees\": true,\n  \"exams\": true,\n  \"notifications\": true,\n  \"parentPortal\": true,\n  \"studentPortal\": true,\n  \"transport\": true,\n  \"library\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "9.4 Update School Details",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/schools/{{schoolId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+918012345678\",\n  \"website\": \"https://greenvalley.edu\",\n  \"city\": \"Bangalore\",\n  \"state\": \"Karnataka\",\n  \"country\": \"India\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Verification",
+      "description": "Verify all data was created correctly",
+      "item": [
+        {
+          "name": "10.1 List All Teachers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Should have teachers', function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/teachers" }
+        },
+        {
+          "name": "10.2 List All Classes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Should have classes', function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/classes" }
+        },
+        {
+          "name": "10.3 List All Students",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Should have students', function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/students" }
+        },
+        {
+          "name": "10.4 List All Parents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Should have parents', function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/parents" }
+        },
+        {
+          "name": "10.5 List All Subjects",
+          "request": { "method": "GET", "url": "{{baseUrl}}/subjects" }
+        },
+        {
+          "name": "10.6 Grade 5 Students",
+          "request": { "method": "GET", "url": "{{baseUrl}}/classes/{{classId}}/students" }
+        },
+        {
+          "name": "10.7 Grade 6 Students",
+          "request": { "method": "GET", "url": "{{baseUrl}}/classes/{{class2Id}}/students" }
+        },
+        {
+          "name": "10.8 Class Statistics",
+          "request": { "method": "GET", "url": "{{baseUrl}}/classes/{{classId}}/statistics" }
+        },
+        {
+          "name": "10.9 Student Stats",
+          "request": { "method": "GET", "url": "{{baseUrl}}/students/stats" }
+        }
+      ]
+    },
+    {
+      "name": "11. Auth Extra Tests",
+      "description": "Password management and logout",
+      "item": [
+        {
+          "name": "11.1 Change Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/change-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"Admin@123456\",\n  \"newPassword\": \"NewAdmin@123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "11.2 Login with New Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const data = res.data || res;",
+                  "if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);",
+                  "if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rajesh.kumar@greenvalley.edu\",\n  \"password\": \"NewAdmin@123456\"\n}"
+            },
+            "auth": { "type": "noauth" }
+          }
+        },
+        {
+          "name": "11.3 Forgot Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rajesh.kumar@greenvalley.edu\"\n}"
+            },
+            "auth": { "type": "noauth" }
+          }
+        },
+        {
+          "name": "11.4 Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        }
+      ]
+    }
+  ]
+}

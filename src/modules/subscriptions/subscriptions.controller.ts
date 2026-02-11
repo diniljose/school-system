@@ -34,7 +34,7 @@ export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN)
   @ApiOperation({ summary: 'Create a new subscription' })
   @ApiResponse({
     status: 201,
@@ -70,7 +70,7 @@ export class SubscriptionsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN)
   @ApiOperation({ summary: 'Update subscription' })
   @ApiResponse({
     status: 200,
@@ -85,7 +85,7 @@ export class SubscriptionsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN)
   @ApiOperation({ summary: 'Delete subscription' })
   @ApiResponse({
     status: 200,
@@ -97,7 +97,7 @@ export class SubscriptionsController {
   }
 
   @Post(':schoolId/change-plan')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Change subscription plan' })
   @ApiResponse({ status: 200, description: 'Plan changed successfully' })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
@@ -109,7 +109,7 @@ export class SubscriptionsController {
   }
 
   @Post(':id/payment')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.ACCOUNTANT)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Record a payment' })
   @ApiResponse({ status: 200, description: 'Payment recorded successfully' })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
@@ -121,7 +121,7 @@ export class SubscriptionsController {
   }
 
   @Get(':id/usage')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Get subscription usage statistics' })
   @ApiResponse({
     status: 200,
@@ -132,3 +132,4 @@ export class SubscriptionsController {
     return this.subscriptionsService.getUsageStats(id);
   }
 }
+

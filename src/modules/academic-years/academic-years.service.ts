@@ -11,10 +11,18 @@ import {
   AcademicYearDocument,
 } from '../../database/schemas/academic-year.schema';
 import { School, SchoolDocument } from '../../database/schemas/school.schema';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto';
 import { UpdateAcademicYearDto } from './dto/update-academic-year.dto';
 import { AddTermDto } from './dto/add-term.dto';
 import { AddHolidayDto } from './dto/add-holiday.dto';
+
+// Tenant context for multi-tenant operations
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class AcademicYearsService {
@@ -23,25 +31,42 @@ export class AcademicYearsService {
     private academicYearModel: Model<AcademicYearDocument>,
     @InjectModel(School.name)
     private schoolModel: Model<SchoolDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  /**
+   * Get the appropriate model based on tenant context
+   */
+  private async getModel(context?: TenantContext): Promise<Model<AcademicYearDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<AcademicYearDocument>(
+        context.schoolCode,
+        'AcademicYear',
+      );
+    }
+    return this.academicYearModel;
+  }
 
   async create(
     createAcademicYearDto: CreateAcademicYearDto,
+    context?: TenantContext,
   ): Promise<AcademicYear> {
-    const school = await this.schoolModel
-      .findById(createAcademicYearDto.school)
-      .exec();
-
-    if (!school) {
-      throw new NotFoundException('School not found');
+    const model = await this.getModel(context);
+    
+    // For tenant users, school is derived from context
+    const schoolId = createAcademicYearDto.school || context?.schoolId;
+    
+    if (!schoolId && !context?.isTenantUser) {
+      throw new BadRequestException('School ID is required');
     }
 
-    const existing = await this.academicYearModel
-      .findOne({
-        school: createAcademicYearDto.school,
-        name: createAcademicYearDto.name,
-      })
-      .exec();
+    // Check for existing academic year with same name
+    const filter: any = { name: createAcademicYearDto.name };
+    if (!context?.isTenantUser) {
+      filter.school = schoolId;
+    }
+
+    const existing = await model.findOne(filter).exec();
 
     if (existing) {
       throw new ConflictException(
@@ -49,63 +74,74 @@ export class AcademicYearsService {
       );
     }
 
+    // If setting as current, unset other current years
     if (createAcademicYearDto.isCurrent) {
-      await this.academicYearModel
-        .updateMany(
-          { school: createAcademicYearDto.school },
-          { isCurrent: false },
-        )
-        .exec();
+      const updateFilter: any = {};
+      if (!context?.isTenantUser && schoolId) {
+        updateFilter.school = schoolId;
+      }
+      await model.updateMany(updateFilter, { isCurrent: false }).exec();
     }
 
-    const academicYear = new this.academicYearModel(createAcademicYearDto);
+    // Create the academic year
+    const academicYearData: any = {
+      ...createAcademicYearDto,
+      startDate: new Date(createAcademicYearDto.startDate),
+      endDate: new Date(createAcademicYearDto.endDate),
+    };
+    
+    // Always set school - required by schema
+    if (schoolId) {
+      academicYearData.school = schoolId;
+    }
+
+    const academicYear = new model(academicYearData);
     return academicYear.save();
   }
 
-  async findAll(query?: any) {
+  async findAll(query?: any, context?: TenantContext) {
+    const model = await this.getModel(context);
     const { page = 1, limit = 10, schoolId, isCurrent, isActive } = query || {};
 
     const filter: any = {};
 
-    if (schoolId) {
+    // For non-tenant users, filter by school
+    if (!context?.isTenantUser && schoolId) {
       filter.school = schoolId;
     }
 
     if (isCurrent !== undefined) {
-      filter.isCurrent = isCurrent;
+      filter.isCurrent = isCurrent === 'true' || isCurrent === true;
     }
 
     if (isActive !== undefined) {
-      filter.isActive = isActive;
+      filter.isActive = isActive === 'true' || isActive === true;
     }
 
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      this.academicYearModel
+      model
         .find(filter)
-        .populate('school')
         .sort({ startDate: -1 })
         .skip(skip)
-        .limit(limit)
+        .limit(Number(limit))
         .exec(),
-      this.academicYearModel.countDocuments(filter).exec(),
+      model.countDocuments(filter).exec(),
     ]);
 
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
     };
   }
 
-  async findById(id: string): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel
-      .findById(id)
-      .populate('school')
-      .exec();
+  async findById(id: string, context?: TenantContext): Promise<AcademicYear> {
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
@@ -114,31 +150,52 @@ export class AcademicYearsService {
     return academicYear;
   }
 
-  async findBySchool(schoolId: string): Promise<AcademicYear[]> {
-    return this.academicYearModel
-      .find({ school: schoolId })
-      .sort({ startDate: -1 })
-      .exec();
+  async findBySchool(schoolId: string, context?: TenantContext): Promise<AcademicYear[]> {
+    const model = await this.getModel(context);
+    const filter: any = {};
+    if (!context?.isTenantUser) {
+      filter.school = schoolId;
+    }
+    return model.find(filter).sort({ startDate: -1 }).exec();
+  }
+
+  async getCurrentYear(schoolId: string, context?: TenantContext): Promise<AcademicYear> {
+    const model = await this.getModel(context);
+    const filter: any = { isCurrent: true };
+    if (!context?.isTenantUser && schoolId) {
+      filter.school = schoolId;
+    }
+    
+    const academicYear = await model.findOne(filter).exec();
+
+    if (!academicYear) {
+      throw new NotFoundException('No current academic year found');
+    }
+
+    return academicYear;
   }
 
   async update(
     id: string,
     updateAcademicYearDto: UpdateAcademicYearDto,
+    context?: TenantContext,
   ): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel.findById(id).exec();
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
     }
 
     if (updateAcademicYearDto.name) {
-      const existing = await this.academicYearModel
-        .findOne({
-          school: academicYear.school,
-          name: updateAcademicYearDto.name,
-          _id: { $ne: id },
-        })
-        .exec();
+      const filter: any = {
+        name: updateAcademicYearDto.name,
+        _id: { $ne: id },
+      };
+      if (!context?.isTenantUser) {
+        filter.school = (academicYear as any).school;
+      }
+      const existing = await model.findOne(filter).exec();
 
       if (existing) {
         throw new ConflictException(
@@ -148,20 +205,20 @@ export class AcademicYearsService {
     }
 
     if (updateAcademicYearDto.isCurrent) {
-      await this.academicYearModel
-        .updateMany(
-          { school: academicYear.school, _id: { $ne: id } },
-          { isCurrent: false },
-        )
-        .exec();
+      const updateFilter: any = { _id: { $ne: id } };
+      if (!context?.isTenantUser) {
+        updateFilter.school = (academicYear as any).school;
+      }
+      await model.updateMany(updateFilter, { isCurrent: false }).exec();
     }
 
     Object.assign(academicYear, updateAcademicYearDto);
     return academicYear.save();
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.academicYearModel.findByIdAndDelete(id).exec();
+  async remove(id: string, context?: TenantContext): Promise<void> {
+    const model = await this.getModel(context);
+    const result = await model.findByIdAndDelete(id).exec();
 
     if (!result) {
       throw new NotFoundException('Academic year not found');
@@ -171,39 +228,34 @@ export class AcademicYearsService {
   async setCurrentYear(
     schoolId: string,
     yearId: string,
+    context?: TenantContext,
   ): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel
-      .findOne({ _id: yearId, school: schoolId })
-      .exec();
+    const model = await this.getModel(context);
+    
+    const filter: any = { _id: yearId };
+    if (!context?.isTenantUser) {
+      filter.school = schoolId;
+    }
+    
+    const academicYear = await model.findOne(filter).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found for this school');
     }
 
-    await this.academicYearModel
-      .updateMany({ school: schoolId }, { isCurrent: false })
-      .exec();
+    const updateFilter: any = {};
+    if (!context?.isTenantUser) {
+      updateFilter.school = schoolId;
+    }
+    await model.updateMany(updateFilter, { isCurrent: false }).exec();
 
     academicYear.isCurrent = true;
     return academicYear.save();
   }
 
-  async getCurrentYear(schoolId: string): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel
-      .findOne({ school: schoolId, isCurrent: true })
-      .exec();
-
-    if (!academicYear) {
-      throw new NotFoundException(
-        'No current academic year found for this school',
-      );
-    }
-
-    return academicYear;
-  }
-
-  async addTerm(id: string, addTermDto: AddTermDto): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel.findById(id).exec();
+  async addTerm(id: string, addTermDto: AddTermDto, context?: TenantContext): Promise<AcademicYear> {
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
@@ -225,8 +277,10 @@ export class AcademicYearsService {
     id: string,
     termId: string,
     updateTermDto: AddTermDto,
+    context?: TenantContext,
   ): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel.findById(id).exec();
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
@@ -244,8 +298,9 @@ export class AcademicYearsService {
     return academicYear.save();
   }
 
-  async removeTerm(id: string, termId: string): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel.findById(id).exec();
+  async removeTerm(id: string, termId: string, context?: TenantContext): Promise<AcademicYear> {
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
@@ -266,8 +321,10 @@ export class AcademicYearsService {
   async addHoliday(
     id: string,
     addHolidayDto: AddHolidayDto,
+    context?: TenantContext,
   ): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel.findById(id).exec();
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
@@ -281,8 +338,10 @@ export class AcademicYearsService {
     id: string,
     holidayId: string,
     updateHolidayDto: AddHolidayDto,
+    context?: TenantContext,
   ): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel.findById(id).exec();
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
@@ -300,8 +359,9 @@ export class AcademicYearsService {
     return academicYear.save();
   }
 
-  async removeHoliday(id: string, holidayId: string): Promise<AcademicYear> {
-    const academicYear = await this.academicYearModel.findById(id).exec();
+  async removeHoliday(id: string, holidayId: string, context?: TenantContext): Promise<AcademicYear> {
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
 
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');

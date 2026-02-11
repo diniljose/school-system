@@ -6,6 +6,8 @@ export enum StudentStatus {
   TRANSFERRED_IN = 'transferred_in',
   DROPPED = 'dropped',
   SUSPENDED = 'suspended',
+  PENDING_APPROVAL = 'pending_approval',  // New: For self-registered students awaiting class teacher approval
+  REJECTED = 'rejected',                  // New: For rejected registrations
 }
 
 export enum PromotionStatus {

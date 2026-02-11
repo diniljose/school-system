@@ -1,4 +1,29 @@
-import { Module } from '@nestjs/common';
+/**
+ * Database Module
+ * Provides MongoDB connection for the master/platform database
+ * and the TenantDatabaseService for per-school database connections
+ */
+import { Module, Global } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
+import { TenantDatabaseService } from '../tenant-database.service';
 
-@Module({})
+@Global()
+@Module({
+  imports: [
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        uri:
+          config.get<string>('MONGODB_URI') ||
+          'mongodb://localhost:27017/school-platform',
+        maxPoolSize: 20,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+      }),
+    }),
+  ],
+  providers: [TenantDatabaseService],
+  exports: [TenantDatabaseService],
+})
 export class DatabaseModule {}

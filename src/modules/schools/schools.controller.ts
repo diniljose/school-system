@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -35,7 +36,7 @@ export class SchoolsController {
   constructor(private readonly schoolsService: SchoolsService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN)
   @ApiOperation({ summary: 'Create a new school' })
   @ApiResponse({ status: 201, description: 'School created successfully' })
   @ApiResponse({
@@ -55,7 +56,7 @@ export class SchoolsController {
   }
 
   @Get('stats')
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN)
   @ApiOperation({ summary: 'Get school statistics' })
   @ApiResponse({
     status: 200,
@@ -64,6 +65,72 @@ export class SchoolsController {
   getStatistics() {
     return this.schoolsService.getStatistics();
   }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // APPROVAL WORKFLOW ENDPOINTS (Super Admin only)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  @Get('pending-approval')
+  @Roles(UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ summary: 'Get schools pending approval' })
+  @ApiResponse({
+    status: 200,
+    description: 'Pending schools retrieved successfully',
+  })
+  getPendingApproval(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ) {
+    return this.schoolsService.findPendingApproval(page, limit);
+  }
+
+  @Post(':id/approve')
+  @Roles(UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ summary: 'Approve a pending school registration' })
+  @ApiResponse({ status: 200, description: 'School approved successfully' })
+  @ApiResponse({ status: 404, description: 'School not found' })
+  @ApiResponse({ status: 400, description: 'School cannot be approved' })
+  async approveSchool(@Param('id') id: string, @Request() req) {
+    return this.schoolsService.approveSchool(id, req.user.id);
+  }
+
+  @Post(':id/reject')
+  @Roles(UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ summary: 'Reject a pending school registration' })
+  @ApiResponse({ status: 200, description: 'School rejected successfully' })
+  @ApiResponse({ status: 404, description: 'School not found' })
+  @ApiResponse({ status: 400, description: 'School cannot be rejected' })
+  async rejectSchool(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @Request() req,
+  ) {
+    return this.schoolsService.rejectSchool(id, req.user.id, reason);
+  }
+
+  @Post(':id/suspend')
+  @Roles(UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ summary: 'Suspend an active school' })
+  @ApiResponse({ status: 200, description: 'School suspended successfully' })
+  @ApiResponse({ status: 404, description: 'School not found' })
+  @ApiResponse({ status: 400, description: 'School cannot be suspended' })
+  async suspendSchool(@Param('id') id: string, @Body('reason') reason: string) {
+    return this.schoolsService.suspendSchool(id, reason);
+  }
+
+  @Post(':id/reactivate')
+  @Roles(UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ summary: 'Reactivate a suspended school' })
+  @ApiResponse({ status: 200, description: 'School reactivated successfully' })
+  @ApiResponse({ status: 404, description: 'School not found' })
+  @ApiResponse({ status: 400, description: 'School cannot be reactivated' })
+  async reactivateSchool(@Param('id') id: string) {
+    return this.schoolsService.reactivateSchool(id);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // STANDARD CRUD ENDPOINTS
+  // ════════════════════════════════════════════════════════════════════════════
 
   @Get(':id')
   @ApiOperation({ summary: 'Get school by ID' })
@@ -74,7 +141,7 @@ export class SchoolsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update school' })
   @ApiResponse({ status: 200, description: 'School updated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -87,7 +154,7 @@ export class SchoolsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN)
   @ApiOperation({ summary: 'Delete school' })
   @ApiResponse({ status: 200, description: 'School deleted successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -96,7 +163,7 @@ export class SchoolsController {
   }
 
   @Patch(':id/settings')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update school settings' })
   @ApiResponse({ status: 200, description: 'Settings updated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -108,7 +175,7 @@ export class SchoolsController {
   }
 
   @Patch(':id/features')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Update school features' })
   @ApiResponse({ status: 200, description: 'Features updated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -120,7 +187,7 @@ export class SchoolsController {
   }
 
   @Patch(':id/features/:feature')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
   @ApiOperation({ summary: 'Toggle a single feature' })
   @ApiResponse({ status: 200, description: 'Feature toggled successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -133,3 +200,4 @@ export class SchoolsController {
     return this.schoolsService.toggleFeature(id, feature, enabled);
   }
 }
+

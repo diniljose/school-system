@@ -9,6 +9,7 @@ import {
   AcademicYear,
   AcademicYearSchema,
 } from '../../database/schemas/academic-year.schema';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import {
     ]),
   ],
   controllers: [StudentsController],
-  providers: [StudentsService],
+  providers: [StudentsService, TenantDatabaseService],
   exports: [StudentsService],
 })
 export class StudentsModule {}

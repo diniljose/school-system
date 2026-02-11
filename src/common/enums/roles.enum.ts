@@ -1,7 +1,6 @@
 export enum UserRole {
-  SUPER_ADMIN = 'super_admin', // Platform admin
-  SCHOOL_ADMIN = 'school_admin', // School owner/admin
-  PRINCIPAL = 'principal',
+  PLATFORM_ADMIN = 'platform_admin', // Software owner/developer - manages the SaaS platform
+  PRINCIPAL = 'principal', // School's top administrator (created when school is approved)
   VICE_PRINCIPAL = 'vice_principal',
   TEACHER = 'teacher',
   CLASS_TEACHER = 'class_teacher',
@@ -11,6 +10,10 @@ export enum UserRole {
   LIBRARIAN = 'librarian',
   RECEPTIONIST = 'receptionist',
 }
+
+// Backward compatibility alias
+export const SUPER_ADMIN = UserRole.PLATFORM_ADMIN;
+export const SCHOOL_ADMIN = UserRole.PRINCIPAL;
 
 export enum Permission {
   // Student Management

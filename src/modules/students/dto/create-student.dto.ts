@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsNotEmpty,
-  IsDate,
   IsOptional,
   IsEmail,
   IsEnum,
@@ -16,129 +15,49 @@ import { Type } from 'class-transformer';
 import { StudentStatus } from '../../../common/enums/student-status.enum';
 
 class AddressDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  street?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  city?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  state?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  country?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  zipCode?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() street?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() city?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() state?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() country?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() zipCode?: string;
 }
 
 class ContactDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  emergencyContact?: string;
+  @ApiPropertyOptional() @IsOptional() @IsEmail() email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() phone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() emergencyContact?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() address?: string;
 }
 
 class HealthInfoDto {
-  @ApiPropertyOptional({ type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  allergies?: string[];
-
-  @ApiPropertyOptional({ type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  medicalConditions?: string[];
-
-  @ApiPropertyOptional({ type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  medications?: string[];
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  doctorName?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  doctorPhone?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  bloodGroup?: string;
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() @IsString({ each: true }) allergies?: string[];
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() @IsString({ each: true }) medicalConditions?: string[];
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray() @IsString({ each: true }) medications?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsString() doctorName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() doctorPhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() bloodGroup?: string;
 }
 
 export class CreateStudentDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString() admissionNumber?: string;
+
+  @ApiProperty() @IsNotEmpty() @IsString() @MinLength(2) @MaxLength(100) firstName: string;
+  @ApiProperty() @IsNotEmpty() @IsString() @MinLength(2) @MaxLength(100) lastName: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() middleName?: string;
+
+  @ApiPropertyOptional({ description: 'Date of birth (ISO string)' })
   @IsOptional()
   @IsString()
-  admissionNumber?: string;
+  dateOfBirth?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(100)
-  firstName: string;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(100)
-  lastName: string;
-
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ['male', 'female', 'other'] })
   @IsOptional()
   @IsString()
-  middleName?: string;
+  gender?: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @Type(() => Date)
-  @IsDate()
-  dateOfBirth: Date;
-
-  @ApiProperty({ enum: ['male', 'female', 'other'] })
-  @IsNotEmpty()
-  @IsString()
-  gender: string;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsEmail()
-  email: string;
-
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  phone: string;
+  @ApiPropertyOptional() @IsOptional() @IsEmail() email?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() phone?: string;
 
   @ApiPropertyOptional({ type: AddressDto })
   @IsOptional()
@@ -146,56 +65,27 @@ export class CreateStudentDto {
   @Type(() => AddressDto)
   address?: AddressDto;
 
+  @ApiPropertyOptional({ type: ContactDto, description: 'Contact info (nested object accepted)' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ContactDto)
+  contact?: ContactDto;
+
   @ApiPropertyOptional({ type: ContactDto })
   @IsOptional()
   @ValidateNested()
   @Type(() => ContactDto)
   emergencyContact?: ContactDto;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  guardianName: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  guardianRelation?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  guardianPhone?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsEmail()
-  guardianEmail?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  nationality?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  religion?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  caste?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  category?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  motherTongue?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() guardianName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() guardianRelation?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() guardianPhone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsEmail() guardianEmail?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() nationality?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() religion?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() caste?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() motherTongue?: string;
 
   @ApiPropertyOptional({ type: HealthInfoDto })
   @IsOptional()
@@ -203,41 +93,22 @@ export class CreateStudentDto {
   @Type(() => HealthInfoDto)
   healthInfo?: HealthInfoDto;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString() previousSchool?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() previousClass?: string;
+
+  @ApiPropertyOptional({ description: 'Admission date (ISO string)' })
   @IsOptional()
   @IsString()
-  previousSchool?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  previousClass?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  admissionDate?: Date;
+  admissionDate?: string;
 
   @ApiPropertyOptional({ enum: StudentStatus })
   @IsOptional()
   @IsEnum(StudentStatus)
   status?: StudentStatus;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  photo?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  birthCertificate?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  transferCertificate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() photo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() birthCertificate?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() transferCertificate?: string;
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
@@ -245,8 +116,21 @@ export class CreateStudentDto {
   @IsString({ each: true })
   documents?: string[];
 
-  @ApiPropertyOptional()
+  // Fields that frontend sends for class assignment
+  @ApiPropertyOptional({ description: 'Current class ID' })
   @IsOptional()
-  @IsObject()
-  metadata?: Record<string, any>;
+  @IsString()
+  currentClass?: string;
+
+  @ApiPropertyOptional({ description: 'Current section' })
+  @IsOptional()
+  @IsString()
+  currentSection?: string;
+
+  @ApiPropertyOptional({ description: 'Roll number' })
+  @IsOptional()
+  @IsString()
+  rollNumber?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsObject() metadata?: Record<string, any>;
 }

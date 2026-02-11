@@ -16,4 +16,14 @@ export class LoginDto {
   @IsString()
   @IsOptional()
   schoolCode?: string; // Required for non-super-admin users
+
+  @ApiProperty({ example: 'teacher', required: false, description: 'Selected role when user has multiple roles' })
+  @IsString()
+  @IsOptional()
+  selectedRole?: string;
+
+  @ApiProperty({ example: 'user-id', required: false, description: 'Selected user ID when user has multiple personas' })
+  @IsString()
+  @IsOptional()
+  selectedUserId?: string;
 }

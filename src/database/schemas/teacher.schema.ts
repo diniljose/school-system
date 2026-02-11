@@ -26,10 +26,10 @@ export class Teacher {
   @Prop()
   photo: string;
 
-  @Prop({ required: true })
+  @Prop()
   dateOfBirth: Date;
 
-  @Prop({ required: true })
+  @Prop()
   gender: string;
 
   @Prop({ type: Object })
@@ -41,11 +41,14 @@ export class Teacher {
     zipCode: string;
   };
 
-  @Prop({ required: true })
+  @Prop()
   joiningDate: Date;
 
   @Prop()
   designation: string;
+
+  @Prop({ type: String })
+  roleCode: string; // Custom role code (e.g., 'senior_teacher', 'subject_teacher', 'hod')
 
   @Prop()
   department: string;
@@ -58,6 +61,16 @@ export class Teacher {
 
   @Prop({ type: Types.ObjectId, ref: 'Class' })
   classTeacherOf: Types.ObjectId; // If class teacher
+
+  @Prop({ type: String })
+  classTeacherSection: string; // Section they are class teacher of (e.g., 'A', 'B')
+
+  @Prop({ type: [Object], default: [] })
+  subjectAssignments: {
+    subject: Types.ObjectId; // Reference to Subject
+    class: Types.ObjectId;   // Reference to Class  
+    sections: string[];      // e.g., ['A', 'B']
+  }[];
 
   @Prop({ type: [Object], default: [] })
   qualifications: {
@@ -91,6 +104,24 @@ export class Teacher {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  @Prop({ 
+    type: String, 
+    enum: ['pending_approval', 'active', 'rejected', 'inactive'],
+    default: 'active' 
+  })
+  status: string;
+
+  @Prop({ type: Object })
+  metadata: {
+    pendingApproval?: boolean;
+    registrationDate?: Date;
+    passwordHash?: string;
+    registrationMessage?: string;
+    rejectedAt?: Date;
+    rejectedBy?: string;
+    rejectionReason?: string;
+  };
 }
 
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);

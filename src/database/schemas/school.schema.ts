@@ -3,6 +3,16 @@ import { Document, Types } from 'mongoose';
 
 export type SchoolDocument = School & Document;
 
+/**
+ * School status for approval workflow
+ */
+export enum SchoolStatus {
+  PENDING_APPROVAL = 'pending_approval',
+  ACTIVE = 'active',
+  REJECTED = 'rejected',
+  SUSPENDED = 'suspended',
+}
+
 @Schema({ timestamps: true })
 export class School {
   @Prop({ required: true })
@@ -74,6 +84,52 @@ export class School {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  /**
+   * School approval status (required for approval workflow)
+   */
+  @Prop({
+    type: String,
+    enum: SchoolStatus,
+    default: SchoolStatus.PENDING_APPROVAL,
+  })
+  status: SchoolStatus;
+
+  /**
+   * Name of the tenant database for this school
+   */
+  @Prop()
+  dbName: string;
+
+  /**
+   * Admin user who registered the school (stored before tenant DB creation)
+   */
+  @Prop({ type: Object })
+  pendingAdmin: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    passwordHash: string;
+    phone?: string;
+  };
+
+  /**
+   * Rejection reason (if status = REJECTED)
+   */
+  @Prop()
+  rejectionReason: string;
+
+  /**
+   * Approval timestamp
+   */
+  @Prop()
+  approvedAt: Date;
+
+  /**
+   * Super Admin who approved/rejected
+   */
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  approvedBy: Types.ObjectId;
 
   @Prop({ type: Object })
   metadata: Record<string, any>;
