@@ -150,6 +150,141 @@ export class AcademicYearsService {
     return academicYear;
   }
 
+  /**
+   * Academic Year Dashboard:
+   * Returns all classes/sections for this academic year, with:
+   * - student count per class/section (from enrollments)
+   * - subjects assigned to each class
+   * - teachers assigned to each class
+   */
+  async getDashboard(id: string, context?: TenantContext) {
+    const model = await this.getModel(context);
+    const academicYear = await model.findById(id).exec();
+    if (!academicYear) {
+      throw new NotFoundException('Academic year not found');
+    }
+
+    // We need tenant models for classes, enrollments, subjects, teachers
+    if (!context?.schoolCode) {
+      throw new BadRequestException('School context required for dashboard');
+    }
+
+    const ClassModel = await this.tenantDatabaseService.getTenantModel(
+      context.schoolCode,
+      'Class',
+    );
+    const EnrollmentModel = await this.tenantDatabaseService.getTenantModel(
+      context.schoolCode,
+      'Enrollment',
+    );
+    const SubjectModel = await this.tenantDatabaseService.getTenantModel(
+      context.schoolCode,
+      'Subject',
+    );
+    const ClassTeacherAssignmentModel = await this.tenantDatabaseService.getTenantModel(
+      context.schoolCode,
+      'ClassTeacherAssignment',
+    );
+
+    // Get all active classes
+    const classes = await ClassModel.find({ isActive: true })
+      .select('name grade sections capacity')
+      .sort({ grade: 1, name: 1 })
+      .lean();
+
+    // Get enrollment counts per class/section for this academic year
+    const enrollmentCounts = await EnrollmentModel.aggregate([
+      { $match: { academicYear: new (await import('mongoose')).Types.ObjectId(id), status: 'active' } },
+      { $group: { _id: { class: '$class', section: '$section' }, count: { $sum: 1 } } },
+    ]);
+
+    // Get subjects assigned to classes (subjects may have class references)
+    const subjects = await SubjectModel.find({})
+      .select('name code class')
+      .lean();
+
+    // Get class teacher assignments for this academic year
+    let teacherAssignments: any[] = [];
+    try {
+      teacherAssignments = await ClassTeacherAssignmentModel.find({ academicYear: id })
+        .populate('teacher', 'firstName lastName email')
+        .populate('class', 'name')
+        .lean();
+    } catch (_) {
+      // ClassTeacherAssignment model may not exist
+    }
+
+    // Build dashboard data per class
+    const classesData = (classes as any[]).map((cls: any) => {
+      const sections = cls.sections && cls.sections.length > 0
+        ? cls.sections.map((s: any) => {
+            const sectionName = s.name || s;
+            const enrollCount = enrollmentCounts.find(
+              (ec: any) => ec._id.class?.toString() === cls._id.toString() && ec._id.section === sectionName,
+            );
+            const sectionTeacher = teacherAssignments.find(
+              (ta: any) => ta.class?._id?.toString() === cls._id.toString() && ta.section === sectionName,
+            );
+            return {
+              name: sectionName,
+              capacity: s.capacity || 0,
+              classTeacher: s.classTeacher || null,
+              studentCount: enrollCount?.count || 0,
+              teacher: sectionTeacher?.teacher || null,
+            };
+          })
+        : [{
+            name: '',
+            capacity: cls.capacity || 0,
+            studentCount: enrollmentCounts.find(
+              (ec: any) => ec._id.class?.toString() === cls._id.toString() && (ec._id.section === '' || !ec._id.section),
+            )?.count || 0,
+          }];
+
+      const classSubjects = (subjects as any[]).filter(
+        (sub: any) => sub.class?.toString() === cls._id.toString(),
+      );
+
+      const totalStudents = sections.reduce((sum: number, s: any) => sum + (s.studentCount || 0), 0);
+
+      return {
+        _id: cls._id,
+        name: cls.name,
+        grade: cls.grade,
+        sections,
+        totalStudents,
+        subjects: classSubjects.map((sub: any) => ({
+          _id: sub._id,
+          name: sub.name,
+          code: sub.code,
+        })),
+      };
+    });
+
+    const totalStudents = classesData.reduce((sum: number, c: any) => sum + c.totalStudents, 0);
+    const totalClasses = classesData.length;
+    const totalSections = classesData.reduce(
+      (sum: number, c: any) => sum + (c.sections?.length || 0),
+      0,
+    );
+
+    return {
+      academicYear: {
+        _id: (academicYear as any)._id,
+        name: (academicYear as any).name,
+        startDate: (academicYear as any).startDate,
+        endDate: (academicYear as any).endDate,
+        isCurrent: (academicYear as any).isCurrent,
+      },
+      summary: {
+        totalClasses,
+        totalSections,
+        totalStudents,
+      },
+      classes: classesData,
+    };
+  }
+
   async findBySchool(schoolId: string, context?: TenantContext): Promise<AcademicYear[]> {
     const model = await this.getModel(context);
     const filter: any = {};

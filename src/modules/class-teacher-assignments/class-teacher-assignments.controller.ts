@@ -25,21 +25,20 @@ import { ClassTeacherAssignmentsService } from './class-teacher-assignments.serv
 import { CreateClassTeacherAssignmentDto } from './dto/create-class-teacher-assignment.dto';
 import { UpdateClassTeacherAssignmentDto } from './dto/update-class-teacher-assignment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('Class Teacher Assignments')
 @ApiBearerAuth('JWT-auth')
 @Controller('class-teacher-assignments')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ClassTeacherAssignmentsController {
   constructor(
     private readonly assignmentsService: ClassTeacherAssignmentsService,
   ) {}
 
   @Get()
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('class-assignment:view')
   @ApiOperation({ summary: 'Get all class teacher assignments' })
   @ApiQuery({ name: 'teacher', required: false })
   @ApiQuery({ name: 'class', required: false })
@@ -64,7 +63,7 @@ export class ClassTeacherAssignmentsController {
   }
 
   @Get('my-classes')
-  @Roles(UserRole.TEACHER, UserRole.CLASS_TEACHER)
+  @RequirePermissions('class-assignment:view')
   @ApiOperation({ summary: 'Get classes assigned to the current teacher' })
   @ApiQuery({ name: 'academicYear', required: false })
   @ApiQuery({ name: 'classTeacherOnly', required: false, type: Boolean })
@@ -84,7 +83,7 @@ export class ClassTeacherAssignmentsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('class-assignment:view')
   @ApiOperation({ summary: 'Get assignment by ID' })
   @ApiResponse({ status: 200, description: 'Assignment details' })
   @ApiResponse({ status: 404, description: 'Assignment not found' })
@@ -93,7 +92,7 @@ export class ClassTeacherAssignmentsController {
   }
 
   @Post()
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('class-assignment:create')
   @ApiOperation({ summary: 'Create a new class teacher assignment' })
   @ApiResponse({ status: 201, description: 'Assignment created' })
   @ApiResponse({ status: 400, description: 'Invalid data or duplicate' })
@@ -105,7 +104,7 @@ export class ClassTeacherAssignmentsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('class-assignment:update')
   @ApiOperation({ summary: 'Update an assignment' })
   @ApiResponse({ status: 200, description: 'Assignment updated' })
   @ApiResponse({ status: 404, description: 'Assignment not found' })
@@ -117,7 +116,7 @@ export class ClassTeacherAssignmentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('class-assignment:delete')
   @ApiOperation({ summary: 'Remove an assignment' })
   @ApiResponse({ status: 200, description: 'Assignment removed' })
   @ApiResponse({ status: 404, description: 'Assignment not found' })
@@ -127,7 +126,7 @@ export class ClassTeacherAssignmentsController {
   }
 
   @Get('class/:classId/teacher')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('class-assignment:view')
   @ApiOperation({ summary: 'Get the class teacher for a specific class' })
   @ApiQuery({ name: 'academicYear', required: true })
   @ApiResponse({ status: 200, description: 'Class teacher details' })
@@ -139,7 +138,7 @@ export class ClassTeacherAssignmentsController {
   }
 
   @Get('check-access/:teacherId/:classId')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('class-assignment:view')
   @ApiOperation({ summary: 'Check if a teacher has access to a class' })
   @ApiQuery({ name: 'academicYear', required: false })
   @ApiResponse({ status: 200, description: 'Access check result' })

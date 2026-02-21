@@ -22,25 +22,19 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { QueryNotificationDto } from './dto/query-notification.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('notification:create')
   @ApiOperation({ summary: 'Create a new notification' })
   @ApiResponse({
     status: 201,
@@ -57,12 +51,7 @@ export class NotificationsController {
   }
 
   @Post(':id/send')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('notification:create')
   @ApiOperation({ summary: 'Send a notification' })
   @ApiParam({ name: 'id', description: 'Notification ID' })
   @ApiResponse({
@@ -76,12 +65,7 @@ export class NotificationsController {
   }
 
   @Put(':id/schedule')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('notification:create')
   @ApiOperation({ summary: 'Schedule a notification' })
   @ApiParam({ name: 'id', description: 'Notification ID' })
   @ApiResponse({
@@ -98,12 +82,7 @@ export class NotificationsController {
   }
 
   @Put(':id/cancel')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('notification:create')
   @ApiOperation({ summary: 'Cancel a scheduled notification' })
   @ApiParam({ name: 'id', description: 'Notification ID' })
   @ApiResponse({
@@ -117,13 +96,7 @@ export class NotificationsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('notification:view')
   @ApiOperation({ summary: 'Get all notifications for school' })
   @ApiResponse({
     status: 200,
@@ -141,7 +114,6 @@ export class NotificationsController {
   }
 
   @Get('my')
-  @Roles(...Object.values(UserRole))
   @ApiOperation({ summary: 'Get notifications for current user' })
   @ApiResponse({
     status: 200,
@@ -159,7 +131,6 @@ export class NotificationsController {
   }
 
   @Get('my/unread-count')
-  @Roles(...Object.values(UserRole))
   @ApiOperation({ summary: 'Get unread notification count for current user' })
   @ApiResponse({
     status: 200,
@@ -170,7 +141,7 @@ export class NotificationsController {
   }
 
   @Get(':id')
-  @Roles(...Object.values(UserRole))
+  @RequirePermissions('notification:view')
   @ApiOperation({ summary: 'Get notification by ID' })
   @ApiParam({ name: 'id', description: 'Notification ID' })
   @ApiResponse({
@@ -183,7 +154,6 @@ export class NotificationsController {
   }
 
   @Patch(':id/read')
-  @Roles(...Object.values(UserRole))
   @ApiOperation({ summary: 'Mark notification as read' })
   @ApiParam({ name: 'id', description: 'Notification ID' })
   @ApiResponse({
@@ -196,7 +166,6 @@ export class NotificationsController {
   }
 
   @Patch('my/mark-all-read')
-  @Roles(...Object.values(UserRole))
   @ApiOperation({ summary: 'Mark all notifications as read for current user' })
   @ApiResponse({
     status: 200,
@@ -207,12 +176,7 @@ export class NotificationsController {
   }
 
   @Get(':id/delivery-stats')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('notification:view')
   @ApiOperation({ summary: 'Get delivery statistics for a notification' })
   @ApiParam({ name: 'id', description: 'Notification ID' })
   @ApiResponse({
@@ -225,7 +189,7 @@ export class NotificationsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('notification:delete')
   @ApiOperation({ summary: 'Delete a notification' })
   @ApiParam({ name: 'id', description: 'Notification ID' })
   @ApiResponse({

@@ -22,20 +22,19 @@ import { UpdateAcademicYearDto } from './dto/update-academic-year.dto';
 import { AddTermDto } from './dto/add-term.dto';
 import { AddHolidayDto } from './dto/add-holiday.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { SchoolAccessGuard } from '../../common/guards/school-access.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('academic-years')
 @ApiBearerAuth()
 @Controller('academic-years')
-@UseGuards(JwtAuthGuard, RolesGuard, SchoolAccessGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, SchoolAccessGuard)
 export class AcademicYearsController {
   constructor(private readonly academicYearsService: AcademicYearsService) {}
 
   @Post()
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:create')
   @ApiOperation({ summary: 'Create a new academic year' })
   @ApiResponse({
     status: 201,
@@ -99,7 +98,7 @@ export class AcademicYearsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Update academic year' })
   @ApiResponse({
     status: 200,
@@ -122,7 +121,7 @@ export class AcademicYearsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:delete')
   @ApiOperation({ summary: 'Delete academic year' })
   @ApiResponse({
     status: 200,
@@ -137,7 +136,7 @@ export class AcademicYearsController {
   }
 
   @Post(':id/set-current')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Set academic year as current' })
   @ApiResponse({
     status: 200,
@@ -152,7 +151,7 @@ export class AcademicYearsController {
   }
 
   @Post(':id/terms')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Add a term to academic year' })
   @ApiResponse({ status: 201, description: 'Term added successfully' })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
@@ -165,7 +164,7 @@ export class AcademicYearsController {
   }
 
   @Patch(':id/terms/:termId')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Update a term' })
   @ApiResponse({ status: 200, description: 'Term updated successfully' })
   @ApiResponse({ status: 404, description: 'Academic year or term not found' })
@@ -182,7 +181,7 @@ export class AcademicYearsController {
   }
 
   @Delete(':id/terms/:termId')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Remove a term' })
   @ApiResponse({ status: 200, description: 'Term removed successfully' })
   @ApiResponse({ status: 404, description: 'Academic year or term not found' })
@@ -194,7 +193,7 @@ export class AcademicYearsController {
   }
 
   @Post(':id/holidays')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Add a holiday to academic year' })
   @ApiResponse({ status: 201, description: 'Holiday added successfully' })
   @ApiResponse({ status: 404, description: 'Academic year not found' })
@@ -206,7 +205,7 @@ export class AcademicYearsController {
   }
 
   @Patch(':id/holidays/:holidayId')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Update a holiday' })
   @ApiResponse({ status: 200, description: 'Holiday updated successfully' })
   @ApiResponse({
@@ -226,7 +225,7 @@ export class AcademicYearsController {
   }
 
   @Delete(':id/holidays/:holidayId')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('academic-year:update')
   @ApiOperation({ summary: 'Remove a holiday' })
   @ApiResponse({ status: 200, description: 'Holiday removed successfully' })
   @ApiResponse({

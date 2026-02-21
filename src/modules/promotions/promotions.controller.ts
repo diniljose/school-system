@@ -21,20 +21,19 @@ import { PromoteStudentDto } from './dto/promote-student.dto';
 import { RetainStudentDto } from './dto/retain-student.dto';
 import { BulkPromoteDto } from './dto/bulk-promote.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Promotions')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('promotions')
 export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('promotion:create')
   @ApiOperation({ summary: 'Bulk promote students (accepts fromClass/toClass aliases)' })
   @ApiResponse({ status: 201, description: 'Bulk promotion completed' })
   async bulkPromoteAlias(
@@ -52,12 +51,7 @@ export class PromotionsController {
   }
 
   @Post('check-eligibility/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('promotion:view')
   @ApiOperation({ summary: 'Check promotion eligibility for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'fromAcademicYear', required: true, type: String })
@@ -77,7 +71,7 @@ export class PromotionsController {
   }
 
   @Post('promote')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('promotion:execute')
   @ApiOperation({ summary: 'Promote a student to next class' })
   @ApiResponse({ status: 201, description: 'Student promoted successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -93,7 +87,7 @@ export class PromotionsController {
   }
 
   @Post('retain')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('promotion:execute')
   @ApiOperation({ summary: 'Retain a student in the same class' })
   @ApiResponse({ status: 201, description: 'Student retained successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -105,7 +99,7 @@ export class PromotionsController {
   }
 
   @Post('bulk-promote')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('promotion:execute')
   @ApiOperation({ summary: 'Bulk promote students from a class section' })
   @ApiResponse({
     status: 201,
@@ -124,12 +118,7 @@ export class PromotionsController {
   }
 
   @Post('bulk-check-eligibility')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('promotion:view')
   @ApiOperation({
     summary: 'Check promotion eligibility for all students in a class section',
   })
@@ -157,12 +146,7 @@ export class PromotionsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('promotion:view')
   @ApiOperation({ summary: 'Get all promotions with pagination' })
   @ApiResponse({ status: 200, description: 'Promotions retrieved' })
   async getAllPromotions(
@@ -178,15 +162,7 @@ export class PromotionsController {
   }
 
   @Get('history/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('promotion:view')
   @ApiOperation({ summary: 'Get promotion history for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiResponse({
@@ -199,12 +175,7 @@ export class PromotionsController {
   }
 
   @Get('pending')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('promotion:view')
   @ApiOperation({ summary: 'Get all pending promotions for a school' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
   @ApiResponse({
@@ -222,7 +193,7 @@ export class PromotionsController {
   }
 
   @Get('statistics')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('promotion:view')
   @ApiOperation({
     summary: 'Get promotion statistics for an academic year',
   })
@@ -242,7 +213,7 @@ export class PromotionsController {
   }
 
   @Delete(':id/undo')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('promotion:execute')
   @ApiOperation({
     summary: 'Undo a promotion and revert student to previous class',
   })

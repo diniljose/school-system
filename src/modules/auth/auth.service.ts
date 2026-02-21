@@ -31,7 +31,6 @@ import {
   AuditLogDocument,
   AuditAction,
 } from '../../database/schemas/audit-log.schema';
-import { RolesService } from '../roles/roles.service';
 
 @Injectable()
 export class AuthService {
@@ -43,7 +42,6 @@ export class AuthService {
     private configService: ConfigService,
     private schoolsService: SchoolsService,
     private tenantDatabaseService: TenantDatabaseService,
-    private rolesService: RolesService,
     @InjectModel(AuditLog.name)
     private auditLogModel: Model<AuditLogDocument>,
   ) {}
@@ -209,8 +207,11 @@ export class AuthService {
       await this.usersService.updateLastLogin(user._id.toString());
     }
 
-    // Generate tokens - include school info for tenant users
-    const tokens = await this.generateTokensForMultiTenant(user, school, isFromTenantDb);
+    // Get merged permissions from user + role (must be done BEFORE token generation)
+    const permissions = await this.getUserPermissions(user, school, isFromTenantDb);
+
+    // Generate tokens - include school info and permissions for tenant users
+    const tokens = await this.generateTokensForMultiTenant(user, school, isFromTenantDb, permissions);
 
     // Audit log
     await this.createAuditLog(
@@ -257,10 +258,92 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        permissions: user.permissions,
+        permissions: permissions,
         school: schoolInfo,
       },
       ...tokens,
+    };
+  }
+
+  // Separate method to get merged permissions for a user
+  private async getUserPermissions(user: any, school: any, isFromTenantDb: boolean): Promise<string[]> {
+    let permissions: string[] = user.permissions || [];
+    
+    // If from tenant DB, also get role-based permissions
+    if (isFromTenantDb && school?.code) {
+      try {
+        const rolePermissions = await this.tenantDatabaseService.getRolePermissions(school.code, user.role);
+        // Merge user-specific permissions with role permissions
+        permissions = [...new Set([...permissions, ...rolePermissions])];
+      } catch (error) {
+        this.logger.debug(`Could not fetch role permissions: ${error.message}`);
+      }
+    }
+    
+    // For platform admin, grant all permissions
+    if (user.role === UserRole.PLATFORM_ADMIN) {
+      permissions = ['*']; // Wildcard for all permissions
+    }
+    
+    return permissions;
+  }
+
+  /**
+   * Get full user profile with fresh permissions from database
+   * Used for getProfile endpoint to ensure frontend has latest permissions
+   */
+  async getFullUserProfile(jwtUser: any) {
+    let user: any = null;
+    let school: any = null;
+    
+    // Check if this is a tenant user (school staff)
+    if (jwtUser.isTenantUser && jwtUser.schoolCode) {
+      // Get user from tenant database
+      user = await this.tenantDatabaseService.findTenantUserByEmail(
+        jwtUser.schoolCode,
+        jwtUser.email,
+      );
+      
+      if (user) {
+        school = await this.schoolsService.findByCode(jwtUser.schoolCode);
+      }
+    } else {
+      // Platform admin - get from main database
+      user = await this.usersService.findById(jwtUser.sub || jwtUser.id);
+    }
+    
+    if (!user) {
+      return jwtUser; // Return JWT user if no database user found
+    }
+    
+    // Get fresh permissions from database
+    const permissions = await this.getUserPermissions(user, school, jwtUser.isTenantUser);
+    
+    // Build school info if applicable
+    let schoolInfo = null;
+    if (school) {
+      const schoolDoc = school as any;
+      schoolInfo = {
+        id: schoolDoc._id?.toString() || '',
+        name: schoolDoc.name,
+        code: schoolDoc.code,
+        logo: schoolDoc.logo,
+        features: schoolDoc.features,
+      };
+    }
+    
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      permissions: permissions,
+      school: schoolInfo,
+      isActive: user.isActive,
+      avatar: user.avatar,
+      phone: user.phone,
+      lastLogin: user.lastLogin,
     };
   }
 
@@ -612,31 +695,73 @@ export class AuthService {
         ),
       });
 
-      const user = (await this.usersService.findById(
-        payload.sub,
-      )) as UserDocument;
+      let user: any = null;
+      let school: any = null;
+      let isFromTenantDb = payload.isTenantUser || false;
+
+      // Check if this is a tenant user or platform admin
+      if (isFromTenantDb && payload.schoolCode) {
+        // Get user from tenant database
+        user = await this.tenantDatabaseService.findTenantUserByEmail(
+          payload.schoolCode,
+          payload.email,
+        );
+        if (user) {
+          school = await this.schoolsService.findByCode(payload.schoolCode);
+        }
+      } else {
+        // Platform admin - get from main database
+        user = await this.usersService.findById(payload.sub);
+      }
 
       if (!user || !user.isActive) {
         throw new UnauthorizedException('Invalid token');
       }
+
+      // Get FRESH permissions from database (not from old token)
+      const permissions = await this.getUserPermissions(user, school, isFromTenantDb);
 
       // Ensure school is always a plain string ID, not a populated object
       const schoolId = user.school
         ? (typeof user.school === 'object' && (user.school as any)._id
           ? (user.school as any)._id.toString()
           : user.school.toString())
-        : null;
+        : (school?._id?.toString() || null);
 
       const newPayload = {
         sub: user._id.toString(),
         email: user.email,
         role: user.role,
         school: schoolId,
-        permissions: user.permissions,
+        schoolCode: school?.code || payload.schoolCode,
+        permissions: permissions,
+        isTenantUser: isFromTenantDb,
       };
+
+      // Build school info for response
+      let schoolInfo = null;
+      if (school) {
+        const schoolDoc = school as any;
+        schoolInfo = {
+          id: schoolDoc._id?.toString() || '',
+          name: schoolDoc.name,
+          code: schoolDoc.code,
+          logo: schoolDoc.logo,
+          features: schoolDoc.features,
+        };
+      }
 
       return {
         accessToken: this.jwtService.sign(newPayload),
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          permissions: permissions,
+          school: schoolInfo,
+        },
       };
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
@@ -1166,282 +1291,6 @@ export class AuthService {
     };
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // TEACHER SELF-REGISTRATION WORKFLOW
-  // ════════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Register a new teacher for a school.
-   * Teacher is created with PENDING_APPROVAL status.
-   * Principal must approve before teacher can login.
-   */
-  async registerTeacher(dto: any) {
-    // Find school by code
-    const school = await this.schoolsService.findByCode(dto.schoolCode);
-    if (!school) {
-      throw new BadRequestException('Invalid school code. Please check and try again.');
-    }
-
-    const schoolDoc = school as any;
-    if (schoolDoc.status !== 'active') {
-      throw new BadRequestException('This school is not accepting registrations at the moment.');
-    }
-
-    // Get tenant Teacher and User models
-    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
-      dto.schoolCode,
-      'Teacher',
-    );
-    const UserModel = await this.tenantDatabaseService.getTenantModel(
-      dto.schoolCode,
-      'User',
-    );
-
-    // Check if email already registered in this school
-    const existingTeacher = await TeacherModel.findOne({ email: dto.email });
-    if (existingTeacher) {
-      throw new BadRequestException('This email is already registered as a teacher in this school.');
-    }
-
-    const existingUser = await UserModel.findOne({ email: dto.email });
-    if (existingUser) {
-      throw new BadRequestException('This email is already registered in this school.');
-    }
-
-    // Hash password for user account
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-
-    // Generate employee ID
-    const year = new Date().getFullYear();
-    const count = await TeacherModel.countDocuments();
-    const employeeId = `TREG${year}${String(count + 1).padStart(5, '0')}`;
-
-    // Create teacher with pending status
-    const teacher = await TeacherModel.create({
-      school: schoolDoc._id,
-      employeeId,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      email: dto.email,
-      phone: dto.phone,
-      dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
-      gender: dto.gender,
-      designation: dto.designation || 'Teacher',
-      department: dto.department,
-      qualifications: dto.qualifications || [],
-      roleCode: dto.roleCode || 'subject_teacher', // Store the selected role
-      status: 'pending_approval',
-      isActive: false,
-      metadata: {
-        pendingApproval: true,
-        registrationDate: new Date(),
-        passwordHash, // Store encrypted password for user creation after approval
-        registrationMessage: dto.message,
-      },
-    });
-
-    const createdTeacher = teacher as any;
-    this.logger.log(
-      `New teacher registration pending approval: ${dto.firstName} ${dto.lastName} @ ${schoolDoc.name}`,
-    );
-
-    return {
-      success: true,
-      message: 'Your registration has been submitted successfully! The principal will review and approve your registration. You will receive a notification once approved.',
-      data: {
-        registrationId: createdTeacher._id.toString(),
-        employeeId: createdTeacher.employeeId,
-        school: {
-          name: schoolDoc.name,
-          code: schoolDoc.code,
-        },
-        status: 'pending_approval',
-      },
-    };
-  }
-
-  async getPendingTeachers(schoolId: string, schoolCode: string) {
-    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
-      schoolCode,
-      'Teacher',
-    );
-
-    const teachers = await TeacherModel.find({ status: 'pending_approval' })
-      .sort({ createdAt: -1 });
-
-    return {
-      success: true,
-      data: teachers.map((t: any) => ({
-        _id: t._id,
-        firstName: t.firstName,
-        lastName: t.lastName,
-        email: t.email,
-        phone: t.phone,
-        dateOfBirth: t.dateOfBirth,
-        gender: t.gender,
-        designation: t.designation,
-        department: t.department,
-        qualifications: t.qualifications,
-        registrationDate: t.metadata?.registrationDate,
-        message: t.metadata?.registrationMessage,
-      })),
-      total: teachers.length,
-    };
-  }
-
-  async approveTeacher(
-    teacherId: string,
-    schoolId: string,
-    schoolCode: string,
-    approvedById: string,
-  ) {
-    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
-      schoolCode,
-      'Teacher',
-    );
-    const UserModel = await this.tenantDatabaseService.getTenantModel(
-      schoolCode,
-      'User',
-    );
-
-    const teacher = await TeacherModel.findById(teacherId);
-    if (!teacher) {
-      throw new BadRequestException('Teacher not found');
-    }
-
-    const teacherDoc = teacher as any;
-    if (teacherDoc.status !== 'pending_approval') {
-      throw new BadRequestException('Teacher is not pending approval');
-    }
-
-    // Create user account for teacher
-    const email = teacherDoc.email;
-    const passwordHash = teacherDoc.metadata?.passwordHash;
-
-    if (!email || !passwordHash) {
-      throw new BadRequestException('Teacher registration data incomplete');
-    }
-
-    // Get role permissions if roleCode is set
-    let permissions: string[] = [];
-    let roleCode = teacherDoc.roleCode || 'subject_teacher'; // Default to subject_teacher
-
-    // Use RolesService which queries the correct tenant database
-    const role = await this.rolesService.findByCode(roleCode, { schoolCode, isTenantUser: true });
-    if (role) {
-      permissions = role.permissions || [];
-    }
-
-    // Determine user role - map roleCode to UserRole enum where possible
-    let userRole = UserRole.TEACHER;
-    if (roleCode === 'class_teacher') {
-      userRole = UserRole.CLASS_TEACHER;
-    } else if (roleCode === 'accountant') {
-      userRole = UserRole.ACCOUNTANT;
-    } else if (roleCode === 'librarian') {
-      userRole = UserRole.LIBRARIAN;
-    }
-
-    const user = await UserModel.create({
-      email,
-      password: passwordHash,
-      firstName: teacherDoc.firstName,
-      lastName: teacherDoc.lastName,
-      role: userRole,
-      roleCode: roleCode,
-      permissions: permissions,
-      school: schoolId,
-      isActive: true,
-    });
-
-    // Update teacher status and link user
-    teacherDoc.status = 'active';
-    teacherDoc.isActive = true;
-    teacherDoc.user = user._id;
-    teacherDoc.joiningDate = new Date();
-
-    // Generate actual employee ID
-    const year = new Date().getFullYear();
-    const count = await TeacherModel.countDocuments({ status: { $ne: 'pending_approval' } });
-    teacherDoc.employeeId = `EMP${year}${String(count + 1).padStart(5, '0')}`;
-
-    // Clean up metadata
-    if (teacherDoc.metadata) {
-      delete teacherDoc.metadata.pendingApproval;
-      delete teacherDoc.metadata.passwordHash;
-    }
-
-    await teacherDoc.save();
-
-    this.logger.log(
-      `Teacher approved: ${teacherDoc.firstName} ${teacherDoc.lastName} - ${teacherDoc.employeeId}`,
-    );
-
-    return {
-      success: true,
-      message: 'Teacher approved successfully. Login credentials have been created.',
-      data: {
-        teacher: {
-          _id: teacherDoc._id,
-          firstName: teacherDoc.firstName,
-          lastName: teacherDoc.lastName,
-          employeeId: teacherDoc.employeeId,
-          email,
-        },
-      },
-    };
-  }
-
-  async rejectTeacher(
-    teacherId: string,
-    schoolId: string,
-    schoolCode: string,
-    rejectedById: string,
-    reason: string,
-  ) {
-    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
-      schoolCode,
-      'Teacher',
-    );
-
-    const teacher = await TeacherModel.findById(teacherId);
-    if (!teacher) {
-      throw new BadRequestException('Teacher not found');
-    }
-
-    const teacherDoc = teacher as any;
-    if (teacherDoc.status !== 'pending_approval') {
-      throw new BadRequestException('Teacher is not pending approval');
-    }
-
-    teacherDoc.status = 'rejected';
-    teacherDoc.isActive = false;
-    teacherDoc.metadata = {
-      ...teacherDoc.metadata,
-      rejectedAt: new Date(),
-      rejectedBy: rejectedById,
-      rejectionReason: reason,
-    };
-    await teacherDoc.save();
-
-    this.logger.log(
-      `Teacher registration rejected: ${teacherDoc.firstName} ${teacherDoc.lastName} - Reason: ${reason}`,
-    );
-
-    return {
-      success: true,
-      message: 'Teacher registration rejected',
-      data: {
-        teacher: {
-          _id: teacherDoc._id,
-          firstName: teacherDoc.firstName,
-          lastName: teacherDoc.lastName,
-        },
-        reason,
-      },
-    };
-  }
-
   private async generateTokens(user: UserDocument) {
     // Ensure school is always a plain string ID, not a populated object
     const schoolId = user.school
@@ -1475,14 +1324,14 @@ export class AuthService {
    * Generate tokens for multi-tenant authentication
    * Includes school code for tenant database routing
    */
-  private async generateTokensForMultiTenant(user: any, school: any, isFromTenantDb: boolean) {
+  private async generateTokensForMultiTenant(user: any, school: any, isFromTenantDb: boolean, permissions: string[] = []) {
     const payload = {
       sub: user._id.toString(),
       email: user.email,
       role: user.role,
       school: school?._id?.toString() || null,
       schoolCode: school?.code || null,
-      permissions: user.permissions || [],
+      permissions: permissions,
       isTenantUser: isFromTenantDb,
     };
 

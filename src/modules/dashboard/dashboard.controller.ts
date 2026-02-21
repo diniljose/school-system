@@ -8,25 +8,19 @@ import {
 } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('dashboard:view')
   @ApiOperation({ summary: 'Get dashboard statistics' })
   @ApiQuery({
     name: 'academicYearId',

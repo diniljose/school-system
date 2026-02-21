@@ -25,19 +25,19 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('user:create')
   @ApiOperation({ summary: 'Create a new user' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -50,7 +50,7 @@ export class UsersController {
   }
 
   @Post('bulk')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('user:create')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Bulk create users' })
   @ApiResponse({ status: 200, description: 'Bulk creation completed' })
@@ -63,6 +63,7 @@ export class UsersController {
   }
 
   @Get()
+  @RequirePermissions('user:view')
   @ApiOperation({ summary: 'Get all users with pagination and filters' })
   @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -81,6 +82,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @RequirePermissions('user:view')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiResponse({ status: 200, description: 'User retrieved successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -92,7 +94,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('user:update')
   @ApiOperation({ summary: 'Update user by ID' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -104,7 +106,7 @@ export class UsersController {
   }
 
   @Patch(':id/role')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('user:update')
   @ApiOperation({ summary: 'Update user role' })
   @ApiResponse({ status: 200, description: 'User role updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
@@ -116,7 +118,7 @@ export class UsersController {
   }
 
   @Patch(':id/permissions')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('user:update')
   @ApiOperation({ summary: 'Update user permissions' })
   @ApiResponse({
     status: 200,
@@ -135,7 +137,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('user:delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft delete user by ID' })
   @ApiResponse({ status: 204, description: 'User deleted successfully' })

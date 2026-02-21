@@ -17,28 +17,21 @@ import {
 } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 import { ReportQueryDto } from './dto/report-query.dto';
 import { ExportReportDto } from './dto/export-report.dto';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('reports')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('student/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate comprehensive student report' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
@@ -60,12 +53,7 @@ export class ReportsController {
   }
 
   @Get('class/:classId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate class performance report' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
   @ApiQuery({ name: 'section', required: false, type: String })
@@ -90,12 +78,7 @@ export class ReportsController {
   }
 
   @Get('attendance')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate attendance report' })
   @ApiQuery({ name: 'classId', required: false, type: String })
   @ApiQuery({ name: 'section', required: false, type: String })
@@ -119,12 +102,7 @@ export class ReportsController {
   }
 
   @Get('fee-collection')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate fee collection report' })
   @ApiQuery({ name: 'startDate', required: true, type: String })
   @ApiQuery({ name: 'endDate', required: true, type: String })
@@ -146,12 +124,7 @@ export class ReportsController {
   }
 
   @Get('exam-analysis/:examId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate exam analysis report' })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiResponse({
@@ -167,7 +140,7 @@ export class ReportsController {
   }
 
   @Get('teacher/:teacherId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate teacher performance report' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
@@ -189,7 +162,7 @@ export class ReportsController {
   }
 
   @Get('school-overview')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate school overview dashboard report' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
   @ApiResponse({
@@ -207,12 +180,7 @@ export class ReportsController {
   }
 
   @Get('defaulters')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate fee defaulters report' })
   @ApiQuery({ name: 'classId', required: false, type: String })
   @ApiResponse({
@@ -227,7 +195,7 @@ export class ReportsController {
   }
 
   @Get('promotions')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('report:view')
   @ApiOperation({ summary: 'Generate promotion statistics report' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
   @ApiResponse({
@@ -245,12 +213,7 @@ export class ReportsController {
   }
 
   @Post('export/pdf')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('report:export')
   @ApiOperation({ summary: 'Export report to PDF (placeholder)' })
   @ApiResponse({
     status: 200,
@@ -264,12 +227,7 @@ export class ReportsController {
   }
 
   @Post('export/excel')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('report:export')
   @ApiOperation({ summary: 'Export report to Excel (placeholder)' })
   @ApiResponse({
     status: 200,

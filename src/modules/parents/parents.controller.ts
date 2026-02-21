@@ -22,20 +22,19 @@ import { UpdateParentDto } from './dto/update-parent.dto';
 import { QueryParentDto } from './dto/query-parent.dto';
 import { LinkChildDto } from './dto/link-child.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Parents')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('parents')
 export class ParentsController {
   constructor(private readonly parentsService: ParentsService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @RequirePermissions('parent:create')
   @ApiOperation({ summary: 'Create new parent' })
   @ApiResponse({ status: 201, description: 'Parent created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -47,12 +46,7 @@ export class ParentsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.RECEPTIONIST,
-  )
+  @RequirePermissions('parent:view')
   @ApiOperation({ summary: 'Get all parents with pagination and filters' })
   @ApiResponse({ status: 200, description: 'Return all parents' })
   async findAll(
@@ -63,12 +57,7 @@ export class ParentsController {
   }
 
   @Get('by-student/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.RECEPTIONIST,
-  )
+  @RequirePermissions('parent:view')
   @ApiOperation({ summary: 'Get all parents of a specific student' })
   @ApiParam({ name: 'studentId', type: String })
   @ApiResponse({ status: 200, description: 'Return parents of the student' })
@@ -81,12 +70,7 @@ export class ParentsController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.RECEPTIONIST,
-  )
+  @RequirePermissions('parent:view')
   @ApiOperation({ summary: 'Get parent by ID' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Return the parent' })
@@ -99,7 +83,7 @@ export class ParentsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @RequirePermissions('parent:update')
   @ApiOperation({ summary: 'Update parent' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Parent updated successfully' })
@@ -113,7 +97,7 @@ export class ParentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('parent:delete')
   @ApiOperation({ summary: 'Delete parent' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Parent deleted successfully' })
@@ -127,7 +111,7 @@ export class ParentsController {
   }
 
   @Post(':id/link-child')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @RequirePermissions('parent:update')
   @ApiOperation({ summary: 'Link a child (student) to parent' })
   @ApiParam({ name: 'id', type: String, description: 'Parent ID' })
   @ApiResponse({ status: 200, description: 'Child linked successfully' })
@@ -141,7 +125,7 @@ export class ParentsController {
   }
 
   @Delete(':id/children/:childId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('parent:update')
   @ApiOperation({ summary: 'Unlink a child (student) from parent' })
   @ApiParam({ name: 'id', type: String, description: 'Parent ID' })
   @ApiParam({ name: 'childId', type: String, description: 'Student ID' })
@@ -156,7 +140,7 @@ export class ParentsController {
   }
 
   @Post(':id/set-primary')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @RequirePermissions('parent:update')
   @ApiOperation({ summary: 'Set parent as primary contact for their children' })
   @ApiParam({ name: 'id', type: String, description: 'Parent ID' })
   @ApiResponse({

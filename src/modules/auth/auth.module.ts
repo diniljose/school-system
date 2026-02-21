@@ -9,7 +9,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UsersModule } from '../users/users.module';
 import { SchoolsModule } from '../schools/schools.module';
-import { RolesModule } from '../roles/roles.module';
 import {
   AuditLog,
   AuditLogSchema,
@@ -19,7 +18,6 @@ import {
   imports: [
     UsersModule,
     SchoolsModule,
-    RolesModule,
     MongooseModule.forFeature([
       { name: AuditLog.name, schema: AuditLogSchema },
     ]),

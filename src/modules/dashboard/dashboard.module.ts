@@ -11,6 +11,14 @@ import {
   AttendanceSchema,
 } from '../../database/schemas/attendance.schema';
 import { Fee, FeeSchema } from '../../database/schemas/fee.schema';
+import {
+  Enrollment,
+  EnrollmentSchema,
+} from '../../database/schemas/enrollment.schema';
+import {
+  SchoolEvent,
+  EventSchema,
+} from '../../database/schemas/event.schema';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Module({
@@ -22,6 +30,8 @@ import { TenantDatabaseService } from '../../database/tenant-database.service';
       { name: Subject.name, schema: SubjectSchema },
       { name: Attendance.name, schema: AttendanceSchema },
       { name: Fee.name, schema: FeeSchema },
+      { name: Enrollment.name, schema: EnrollmentSchema },
+      { name: SchoolEvent.name, schema: EventSchema },
     ]),
   ],
   controllers: [DashboardController],

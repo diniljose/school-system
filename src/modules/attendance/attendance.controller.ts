@@ -20,26 +20,19 @@ import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { MarkIndividualAttendanceDto } from './dto/mark-individual-attendance.dto';
 import { QueryAttendanceDto } from './dto/query-attendance.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Attendance')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({ summary: 'Get attendance records with filters' })
   @ApiQuery({ name: 'classId', required: false, type: String })
   @ApiQuery({ name: 'date', required: false, type: String })
@@ -60,12 +53,7 @@ export class AttendanceController {
   }
 
   @Post()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('attendance:create')
   @ApiOperation({ summary: 'Mark attendance for entire class (alias for mark-class)' })
   @ApiResponse({ status: 201, description: 'Attendance marked successfully' })
   async markAttendanceAlias(
@@ -81,12 +69,7 @@ export class AttendanceController {
   }
 
   @Post('mark-class')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('attendance:create')
   @ApiOperation({ summary: 'Mark attendance for entire class' })
   @ApiResponse({
     status: 201,
@@ -107,12 +90,7 @@ export class AttendanceController {
   }
 
   @Post('mark-individual')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('attendance:create')
   @ApiOperation({ summary: 'Mark attendance for individual student' })
   @ApiResponse({
     status: 201,
@@ -133,15 +111,7 @@ export class AttendanceController {
   }
 
   @Get('student/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({ summary: 'Get student attendance with filters' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({
@@ -194,13 +164,7 @@ export class AttendanceController {
   }
 
   @Get('class/:classId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({ summary: 'Get class attendance for a specific date' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
   @ApiQuery({ name: 'section', required: true, description: 'Section name' })
@@ -226,15 +190,7 @@ export class AttendanceController {
   }
 
   @Get('student/:studentId/statistics')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({
     summary: 'Get attendance statistics for a student with percentage',
   })
@@ -266,13 +222,7 @@ export class AttendanceController {
   }
 
   @Get('class/:classId/absentees')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({ summary: 'Get list of absentees for a class on a date' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
   @ApiQuery({ name: 'section', required: true, description: 'Section name' })
@@ -298,12 +248,7 @@ export class AttendanceController {
   }
 
   @Get('class/:classId/defaulters')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({
     summary: 'Get list of students below attendance threshold (defaulters)',
   })
@@ -339,15 +284,7 @@ export class AttendanceController {
   }
 
   @Get('student/:studentId/monthly-report')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({ summary: 'Get monthly attendance report for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({
@@ -386,15 +323,7 @@ export class AttendanceController {
   }
 
   @Get('student/:studentId/yearly-report')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('attendance:view')
   @ApiOperation({ summary: 'Get yearly attendance report for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({

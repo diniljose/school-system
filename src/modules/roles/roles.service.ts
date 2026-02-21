@@ -38,16 +38,22 @@ export const PERMISSION_MODULES = [
     permissions: ['user:create', 'user:view', 'user:update', 'user:delete'],
   },
   {
+    code: 'role',
+    name: 'Role Management',
+    description: 'Manage roles and permissions',
+    permissions: ['role:create', 'role:view', 'role:update', 'role:delete'],
+  },
+  {
     code: 'student',
     name: 'Students',
     description: 'Student records and profiles',
-    permissions: ['student:create', 'student:view', 'student:update', 'student:delete'],
+    permissions: ['student:create', 'student:view', 'student:update', 'student:delete', 'student:approve'],
   },
   {
     code: 'teacher',
     name: 'Teachers',
     description: 'Teacher profiles and assignments',
-    permissions: ['teacher:create', 'teacher:view', 'teacher:update', 'teacher:delete'],
+    permissions: ['teacher:create', 'teacher:view', 'teacher:update', 'teacher:delete', 'teacher:approve'],
   },
   {
     code: 'parent',
@@ -138,6 +144,18 @@ export const PERMISSION_MODULES = [
     name: 'Promotions',
     description: 'Class promotions',
     permissions: ['promotion:create', 'promotion:view', 'promotion:update', 'promotion:execute'],
+  },
+  {
+    code: 'enrollment',
+    name: 'Enrollments',
+    description: 'Student enrollment to classes and sections',
+    permissions: ['enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:delete', 'enrollment:bulk'],
+  },
+  {
+    code: 'event',
+    name: 'Events',
+    description: 'School events and calendar management',
+    permissions: ['event:create', 'event:view', 'event:update', 'event:delete'],
   },
 ];
 

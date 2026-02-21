@@ -40,10 +40,15 @@ export class RegisterStudentDto {
   @IsString()
   classId: string;
 
-  @ApiProperty({ example: 'A', description: 'Section/Division name' })
+  @ApiProperty({ example: '507f1f77bcf86cd799439011', description: 'Academic Year ID to enroll in' })
   @IsNotEmpty()
   @IsString()
-  section: string;
+  academicYearId: string;
+
+  @ApiPropertyOptional({ example: 'A', description: 'Section/Division name — optional for classes without sections' })
+  @IsOptional()
+  @IsString()
+  section?: string;
 
   @ApiPropertyOptional({ example: '2010-05-15', description: 'Date of birth' })
   @IsOptional()

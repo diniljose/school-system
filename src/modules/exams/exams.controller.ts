@@ -22,20 +22,19 @@ import { UpdateExamDto } from './dto/update-exam.dto';
 import { QueryExamDto } from './dto/query-exam.dto';
 import { ExamScheduleDto } from './dto/exam-schedule.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Exams')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('exams')
 export class ExamsController {
   constructor(private readonly examsService: ExamsService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('exam:create')
   @ApiOperation({ summary: 'Create a new exam' })
   @ApiResponse({ status: 201, description: 'Exam created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -47,13 +46,7 @@ export class ExamsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('exam:view')
   @ApiOperation({ summary: 'Get all exams with pagination and filters' })
   @ApiResponse({ status: 200, description: 'Exams retrieved successfully' })
   async findAll(
@@ -64,13 +57,7 @@ export class ExamsController {
   }
 
   @Get('upcoming')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('exam:view')
   @ApiOperation({ summary: 'Get upcoming exams (next 30 days)' })
   @ApiResponse({
     status: 200,
@@ -81,13 +68,7 @@ export class ExamsController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('exam:view')
   @ApiOperation({ summary: 'Get exam by ID with full schedule' })
   @ApiResponse({ status: 200, description: 'Exam retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })
@@ -100,7 +81,7 @@ export class ExamsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('exam:update')
   @ApiOperation({ summary: 'Update exam' })
   @ApiResponse({ status: 200, description: 'Exam updated successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })
@@ -114,7 +95,7 @@ export class ExamsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('exam:delete')
   @ApiOperation({ summary: 'Delete exam' })
   @ApiResponse({ status: 200, description: 'Exam deleted successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })
@@ -127,7 +108,7 @@ export class ExamsController {
   }
 
   @Post(':id/assign-class/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('exam:update')
   @ApiOperation({ summary: 'Assign exam to a class' })
   @ApiResponse({ status: 200, description: 'Class assigned successfully' })
   @ApiResponse({ status: 404, description: 'Exam or class not found' })
@@ -142,7 +123,7 @@ export class ExamsController {
   }
 
   @Delete(':id/classes/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('exam:update')
   @ApiOperation({ summary: 'Remove class from exam' })
   @ApiResponse({ status: 200, description: 'Class removed successfully' })
   @ApiResponse({ status: 404, description: 'Exam or class not found' })
@@ -157,7 +138,7 @@ export class ExamsController {
   }
 
   @Post(':id/schedule')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('exam:update')
   @ApiOperation({ summary: 'Add schedule item to exam' })
   @ApiResponse({ status: 201, description: 'Schedule added successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })
@@ -171,7 +152,7 @@ export class ExamsController {
   }
 
   @Patch(':id/schedule/:scheduleId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('exam:update')
   @ApiOperation({ summary: 'Update schedule item' })
   @ApiResponse({ status: 200, description: 'Schedule updated successfully' })
   @ApiResponse({ status: 404, description: 'Exam or schedule item not found' })
@@ -192,7 +173,7 @@ export class ExamsController {
   }
 
   @Delete(':id/schedule/:scheduleId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('exam:update')
   @ApiOperation({ summary: 'Remove schedule item from exam' })
   @ApiResponse({ status: 200, description: 'Schedule removed successfully' })
   @ApiResponse({ status: 404, description: 'Exam or schedule item not found' })
@@ -207,13 +188,7 @@ export class ExamsController {
   }
 
   @Get(':id/timetable')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('exam:view')
   @ApiOperation({ summary: 'Get exam timetable' })
   @ApiResponse({ status: 200, description: 'Timetable retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Exam not found' })

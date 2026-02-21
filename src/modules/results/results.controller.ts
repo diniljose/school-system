@@ -23,20 +23,19 @@ import { UpdateResultDto } from './dto/update-result.dto';
 import { BulkResultDto } from './dto/bulk-result.dto';
 import { QueryResultDto } from './dto/query-result.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Results')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('results')
 export class ResultsController {
   constructor(private readonly resultsService: ResultsService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('result:create')
   @ApiOperation({ summary: 'Create a new result' })
   @ApiResponse({ status: 201, description: 'Result created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -53,7 +52,7 @@ export class ResultsController {
   }
 
   @Post('bulk')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('result:create')
   @ApiOperation({ summary: 'Create multiple results at once' })
   @ApiResponse({ status: 201, description: 'Results created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -70,13 +69,7 @@ export class ResultsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({ summary: 'Get all results with filters and pagination' })
   @ApiQuery({ name: 'examId', required: false, type: String })
   @ApiQuery({ name: 'classId', required: false, type: String })
@@ -101,15 +94,7 @@ export class ResultsController {
   // ————————————————————————————————————————————————————
 
   @Get('student/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({ summary: 'Get all results for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'academicYearId', required: false, type: String })
@@ -122,15 +107,7 @@ export class ResultsController {
   }
 
   @Get('report-card/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({ summary: 'Get student report card for an academic year' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
@@ -147,15 +124,7 @@ export class ResultsController {
   }
 
   @Get('trend/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({
     summary: 'Get performance trend for a student across all exams',
   })
@@ -169,13 +138,7 @@ export class ResultsController {
   }
 
   @Get('class/:examId/:classId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({
     summary: 'Get all results for a class in an exam with statistics',
   })
@@ -193,13 +156,7 @@ export class ResultsController {
   }
 
   @Get('top-performers/:examId/:classId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({ summary: 'Get top performers in an exam for a class' })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -222,13 +179,7 @@ export class ResultsController {
   }
 
   @Get('analysis/:examId/:classId/:subjectId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({ summary: 'Get subject-wise analysis for an exam and class' })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -254,15 +205,7 @@ export class ResultsController {
   // ————————————————————————————————————————————————————
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('result:view')
   @ApiOperation({ summary: 'Get a result by ID' })
   @ApiParam({ name: 'id', description: 'Result ID' })
   @ApiResponse({ status: 200, description: 'Result retrieved successfully' })
@@ -275,7 +218,7 @@ export class ResultsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('result:update')
   @ApiOperation({ summary: 'Update a result' })
   @ApiParam({ name: 'id', description: 'Result ID' })
   @ApiResponse({ status: 200, description: 'Result updated successfully' })
@@ -289,7 +232,7 @@ export class ResultsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('result:delete')
   @ApiOperation({ summary: 'Delete a result' })
   @ApiParam({ name: 'id', description: 'Result ID' })
   @ApiResponse({ status: 200, description: 'Result deleted successfully' })
@@ -302,7 +245,7 @@ export class ResultsController {
   }
 
   @Post('calculate-grades/:id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('result:update')
   @ApiOperation({ summary: 'Calculate grades for a result' })
   @ApiParam({ name: 'id', description: 'Result ID' })
   @ApiResponse({ status: 200, description: 'Grades calculated successfully' })
@@ -312,7 +255,7 @@ export class ResultsController {
   }
 
   @Post('calculate-ranks/:examId/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.TEACHER)
+  @RequirePermissions('result:update')
   @ApiOperation({ summary: 'Calculate ranks for an exam and class' })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -325,7 +268,7 @@ export class ResultsController {
   }
 
   @Post('publish/:examId/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('result:publish')
   @ApiOperation({ summary: 'Publish results for an exam and class' })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -339,7 +282,7 @@ export class ResultsController {
   }
 
   @Post('unpublish/:examId/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('result:publish')
   @ApiOperation({ summary: 'Unpublish results for an exam and class' })
   @ApiParam({ name: 'examId', description: 'Exam ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })

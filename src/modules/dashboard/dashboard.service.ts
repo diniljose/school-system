@@ -7,6 +7,8 @@ import { Class, ClassDocument } from '../../database/schemas/class.schema';
 import { Subject, SubjectDocument } from '../../database/schemas/subject.schema';
 import { Attendance, AttendanceDocument } from '../../database/schemas/attendance.schema';
 import { Fee, FeeDocument } from '../../database/schemas/fee.schema';
+import { Enrollment, EnrollmentDocument, EnrollmentStatus } from '../../database/schemas/enrollment.schema';
+import { SchoolEvent, EventDocument, EventStatus } from '../../database/schemas/event.schema';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 interface TenantContext {
@@ -23,6 +25,8 @@ export class DashboardService {
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
     @InjectModel(Attendance.name) private attendanceModel: Model<AttendanceDocument>,
     @InjectModel(Fee.name) private feeModel: Model<FeeDocument>,
+    @InjectModel(Enrollment.name) private enrollmentModel: Model<EnrollmentDocument>,
+    @InjectModel(SchoolEvent.name) private eventModel: Model<EventDocument>,
     private tenantDatabaseService: TenantDatabaseService,
   ) {}
 
@@ -84,6 +88,26 @@ export class DashboardService {
       );
     }
     return this.feeModel;
+  }
+
+  private async getEnrollmentModel(context?: TenantContext): Promise<Model<EnrollmentDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<EnrollmentDocument>(
+        context.schoolCode,
+        'Enrollment',
+      );
+    }
+    return this.enrollmentModel;
+  }
+
+  private async getEventModel(context?: TenantContext): Promise<Model<EventDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<EventDocument>(
+        context.schoolCode,
+        'SchoolEvent',
+      );
+    }
+    return this.eventModel;
   }
 
   async getDashboardStats(
@@ -206,6 +230,68 @@ export class DashboardService {
       pendingFees: 0,
     };
 
+    // Get enrollment stats
+    const enrollmentModel = await this.getEnrollmentModel(context);
+    const enrollmentFilter: any = { ...baseFilter, status: EnrollmentStatus.ACTIVE };
+    const totalEnrollments = await enrollmentModel.countDocuments(enrollmentFilter);
+
+    const enrollmentClassWise = await enrollmentModel.aggregate([
+      { $match: enrollmentFilter },
+      {
+        $group: {
+          _id: { class: '$class', section: '$section' },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'classes',
+          localField: '_id.class',
+          foreignField: '_id',
+          as: 'classInfo',
+        },
+      },
+      { $unwind: { path: '$classInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          className: '$classInfo.name',
+          section: '$_id.section',
+          count: 1,
+        },
+      },
+      { $sort: { className: 1, section: 1 } },
+    ]);
+
+    // Get upcoming events
+    const eventModel = await this.getEventModel(context);
+    const now = new Date();
+    const upcomingEventsFilter: any = {
+      ...baseFilter,
+      isActive: true,
+      startDate: { $gte: now },
+      status: { $in: [EventStatus.UPCOMING, EventStatus.ONGOING] },
+    };
+
+    const upcomingEvents = await eventModel
+      .find(upcomingEventsFilter)
+      .populate('targetClasses', 'name')
+      .sort({ startDate: 1 })
+      .limit(5);
+
+    // Get today's events
+    const todayEventsFilter: any = {
+      ...baseFilter,
+      isActive: true,
+      $or: [
+        { startDate: { $gte: today, $lt: todayEnd } },
+        { startDate: { $lte: today }, endDate: { $gte: today } },
+      ],
+    };
+    const todayEvents = await eventModel
+      .find(todayEventsFilter)
+      .sort({ startDate: 1 });
+
     return {
       success: true,
       data: {
@@ -217,6 +303,7 @@ export class DashboardService {
           totalClasses,
           activeClasses,
           totalSubjects,
+          totalEnrollments,
         },
         attendance: {
           today: {
@@ -237,6 +324,16 @@ export class DashboardService {
                 ? ((feeCollectionStats.paidFees / feeCollectionStats.totalFees) * 100).toFixed(2)
                 : 0,
           },
+        },
+        enrollments: {
+          totalActive: totalEnrollments,
+          classWise: enrollmentClassWise,
+        },
+        events: {
+          upcoming: upcomingEvents,
+          today: todayEvents,
+          todayCount: todayEvents.length,
+          upcomingCount: upcomingEvents.length,
         },
       },
     };

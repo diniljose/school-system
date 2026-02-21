@@ -23,22 +23,22 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { AssignClassDto } from './dto/assign-class.dto';
 import { QueryStudentDto } from './dto/query-student.dto';
+import { StudentActionDto, BulkStudentActionDto } from './dto/student-action.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 
 @ApiTags('Students')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Permissions('student:create')
   @ApiOperation({
     summary: 'Create new student with auto-generated admission number',
   })
@@ -55,13 +55,7 @@ export class StudentsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @Permissions('student:view')
   @ApiOperation({ summary: 'Get all students with filters and pagination' })
   @ApiQuery({ name: 'classId', required: false })
   @ApiQuery({ name: 'section', required: false })
@@ -83,7 +77,7 @@ export class StudentsController {
   }
 
   @Get('stats')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Permissions('student:view')
   @ApiOperation({ summary: 'Get student statistics' })
   @ApiResponse({
     status: 200,
@@ -100,13 +94,7 @@ export class StudentsController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @Permissions('student:view')
   @ApiOperation({ summary: 'Get student by ID' })
   @ApiResponse({ status: 200, description: 'Student retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -122,7 +110,7 @@ export class StudentsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.RECEPTIONIST)
+  @Permissions('student:update')
   @ApiOperation({ summary: 'Update student details' })
   @ApiResponse({ status: 200, description: 'Student updated successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -139,7 +127,7 @@ export class StudentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @Permissions('student:delete')
   @ApiOperation({ summary: 'Delete student (soft delete)' })
   @ApiResponse({ status: 200, description: 'Student deleted successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -155,7 +143,7 @@ export class StudentsController {
   }
 
   @Post('bulk')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @Permissions('student:create')
   @ApiOperation({ summary: 'Bulk import students' })
   @ApiResponse({ status: 201, description: 'Students imported successfully' })
   async bulkImport(
@@ -170,7 +158,7 @@ export class StudentsController {
   }
 
   @Patch(':id/assign-class')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Permissions('student:update')
   @ApiOperation({ summary: 'Assign student to class and section' })
   @ApiResponse({ status: 200, description: 'Student assigned successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -187,13 +175,7 @@ export class StudentsController {
   }
 
   @Get(':id/academic-history')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @Permissions('student:view')
   @ApiOperation({ summary: 'Get student academic history' })
   @ApiResponse({
     status: 200,
@@ -212,7 +194,7 @@ export class StudentsController {
   }
 
   @Get(':id/transfer-history')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @Permissions('student:view')
   @ApiOperation({ summary: 'Get student transfer history' })
   @ApiResponse({
     status: 200,
@@ -231,7 +213,7 @@ export class StudentsController {
   }
 
   @Patch(':id/status')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @Permissions('student:update')
   @ApiOperation({ summary: 'Update student status' })
   @ApiResponse({ status: 200, description: 'Status updated successfully' })
   @ApiResponse({ status: 404, description: 'Student not found' })
@@ -242,6 +224,50 @@ export class StudentsController {
     @Req() req: Request,
   ) {
     return this.studentsService.updateStatus(id, status, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
+  }
+
+  @Get('options/actions')
+  @Permissions('student:view')
+  @ApiOperation({ summary: 'Get available student action options' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter actions by student status' })
+  @ApiResponse({ status: 200, description: 'Action options retrieved' })
+  getActionOptions(@Query('status') status?: string) {
+    return this.studentsService.getActionOptions(status);
+  }
+
+  @Post(':id/action')
+  @Permissions('student:update')
+  @ApiOperation({ summary: 'Perform action on student (promote, fail, transfer, etc.)' })
+  @ApiResponse({ status: 200, description: 'Action performed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid action or parameters' })
+  @ApiResponse({ status: 404, description: 'Student not found' })
+  async performAction(
+    @Param('id') id: string,
+    @Body() actionDto: StudentActionDto,
+    @CurrentUser('school') schoolId: string,
+    @CurrentUser('sub') userId: string,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.performAction(id, actionDto, schoolId, userId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
+  }
+
+  @Post('bulk/action')
+  @Permissions('student:update')
+  @ApiOperation({ summary: 'Perform bulk action on multiple students' })
+  @ApiResponse({ status: 200, description: 'Bulk action completed' })
+  async performBulkAction(
+    @Body() bulkActionDto: BulkStudentActionDto,
+    @CurrentUser('school') schoolId: string,
+    @CurrentUser('sub') userId: string,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.performBulkAction(bulkActionDto, schoolId, userId, {
       schoolCode: (req as any).user?.schoolCode,
       isTenantUser: (req as any).user?.isTenantUser,
     });

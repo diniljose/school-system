@@ -26,15 +26,13 @@ import { RolesService, TenantContext } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('Roles')
 @ApiBearerAuth('JWT-auth')
 @Controller('roles')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
@@ -47,6 +45,7 @@ export class RolesController {
   }
 
   @Get()
+  @RequirePermissions('role:view')
   @ApiOperation({ summary: 'Get all roles for the school' })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'List of roles' })
@@ -56,6 +55,7 @@ export class RolesController {
   }
 
   @Get('permissions')
+  @RequirePermissions('role:view')
   @ApiOperation({ summary: 'Get all available permissions organized by module' })
   @ApiResponse({ status: 200, description: 'Permission modules and all permissions' })
   getAvailablePermissions() {
@@ -63,6 +63,7 @@ export class RolesController {
   }
 
   @Get(':id')
+  @RequirePermissions('role:view')
   @ApiOperation({ summary: 'Get a role by ID' })
   @ApiResponse({ status: 200, description: 'Role details' })
   @ApiResponse({ status: 404, description: 'Role not found' })
@@ -72,6 +73,7 @@ export class RolesController {
   }
 
   @Post()
+  @RequirePermissions('role:create')
   @ApiOperation({ summary: 'Create a custom role' })
   @ApiResponse({ status: 201, description: 'Role created' })
   @ApiResponse({ status: 400, description: 'Invalid permissions or duplicate code' })
@@ -81,6 +83,7 @@ export class RolesController {
   }
 
   @Patch(':id')
+  @RequirePermissions('role:update')
   @ApiOperation({ summary: 'Update a role' })
   @ApiResponse({ status: 200, description: 'Role updated' })
   @ApiResponse({ status: 400, description: 'Cannot modify system role code' })
@@ -91,6 +94,7 @@ export class RolesController {
   }
 
   @Delete(':id')
+  @RequirePermissions('role:delete')
   @ApiOperation({ summary: 'Delete a custom role' })
   @ApiResponse({ status: 200, description: 'Role deleted' })
   @ApiResponse({ status: 400, description: 'Cannot delete system role' })
@@ -101,7 +105,7 @@ export class RolesController {
   }
 
   @Post('initialize')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('role:create')
   @ApiOperation({ summary: 'Initialize default roles for the school' })
   @ApiResponse({ status: 201, description: 'Default roles created' })
   async initializeDefaults(@Request() req) {

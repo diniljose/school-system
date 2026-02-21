@@ -52,10 +52,14 @@ export const DEFAULT_SCHOOL_ROLES = [
     permissions: [
       // User management
       'user:create', 'user:view', 'user:update', 'user:delete',
+      // Role management
+      'role:create', 'role:view', 'role:update', 'role:delete',
+      // Dashboard
+      'dashboard:view',
       // Student management
-      'student:create', 'student:view', 'student:update', 'student:delete',
+      'student:create', 'student:view', 'student:update', 'student:delete', 'student:approve',
       // Teacher management
-      'teacher:create', 'teacher:view', 'teacher:update', 'teacher:delete',
+      'teacher:create', 'teacher:view', 'teacher:update', 'teacher:delete', 'teacher:approve',
       // Parent management
       'parent:create', 'parent:view', 'parent:update', 'parent:delete',
       // Class management
@@ -65,13 +69,15 @@ export const DEFAULT_SCHOOL_ROLES = [
       // Exam management
       'exam:create', 'exam:view', 'exam:update', 'exam:delete',
       // Result management
-      'result:create', 'result:view', 'result:update', 'result:delete',
+      'result:create', 'result:view', 'result:update', 'result:delete', 'result:publish',
       // Fee management
       'fee:create', 'fee:view', 'fee:update', 'fee:delete',
       // Attendance
       'attendance:create', 'attendance:view', 'attendance:update', 'attendance:delete',
       // Timetable
       'timetable:create', 'timetable:view', 'timetable:update', 'timetable:delete',
+      // Transport
+      'transport:create', 'transport:view', 'transport:update', 'transport:delete',
       // Academic year
       'academic-year:create', 'academic-year:view', 'academic-year:update', 'academic-year:delete',
       // Reports
@@ -79,7 +85,15 @@ export const DEFAULT_SCHOOL_ROLES = [
       // Settings
       'settings:view', 'settings:update',
       // Notifications
-      'notification:create', 'notification:view',
+      'notification:create', 'notification:view', 'notification:delete',
+      // Transfers
+      'transfer:create', 'transfer:view', 'transfer:update', 'transfer:approve',
+      // Promotions
+      'promotion:create', 'promotion:view', 'promotion:update', 'promotion:execute',
+      // Enrollments
+      'enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:delete', 'enrollment:bulk',
+      // Events
+      'event:create', 'event:view', 'event:update', 'event:delete',
     ],
   },
   {
@@ -88,21 +102,50 @@ export const DEFAULT_SCHOOL_ROLES = [
     description: 'School principal with full view and limited edit access',
     isSystemRole: true,
     permissions: [
-      'user:view',
-      'student:view', 'student:create', 'student:update',
-      'teacher:view', 'teacher:create', 'teacher:update',
-      'parent:view',
+      // User management
+      'user:view', 'user:create', 'user:update',
+      // Role management
+      'role:view', 'role:create', 'role:update', 'role:delete',
+      // Dashboard
+      'dashboard:view',
+      // Student management
+      'student:view', 'student:create', 'student:update', 'student:approve',
+      // Teacher management
+      'teacher:view', 'teacher:create', 'teacher:update', 'teacher:approve',
+      // Parent management
+      'parent:view', 'parent:create', 'parent:update',
+      // Class management
       'class:view', 'class:create', 'class:update',
+      // Subject management
       'subject:view', 'subject:create', 'subject:update',
+      // Exam management
       'exam:view', 'exam:create', 'exam:update',
-      'result:view',
-      'fee:view',
-      'attendance:view',
+      // Result management
+      'result:view', 'result:create', 'result:update', 'result:publish',
+      // Fee management
+      'fee:view', 'fee:create', 'fee:update',
+      // Attendance
+      'attendance:view', 'attendance:create', 'attendance:update',
+      // Timetable
       'timetable:view', 'timetable:create', 'timetable:update',
+      // Transport
+      'transport:view', 'transport:create', 'transport:update',
+      // Academic year
       'academic-year:view', 'academic-year:create', 'academic-year:update',
+      // Reports
       'report:view', 'report:export',
-      'settings:view',
+      // Settings
+      'settings:view', 'settings:update',
+      // Notifications
       'notification:create', 'notification:view',
+      // Transfers
+      'transfer:view', 'transfer:create', 'transfer:update', 'transfer:approve',
+      // Promotions
+      'promotion:view', 'promotion:create', 'promotion:update', 'promotion:execute',
+      // Enrollments
+      'enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:bulk',
+      // Events
+      'event:create', 'event:view', 'event:update', 'event:delete',
     ],
   },
   {
@@ -111,7 +154,8 @@ export const DEFAULT_SCHOOL_ROLES = [
     description: 'Teacher with administrative access to assigned classes',
     isSystemRole: true,
     permissions: [
-      'student:view', 'student:create', 'student:update', // For assigned classes only
+      'dashboard:view',
+      'student:view', 'student:create', 'student:update', 'student:approve', // For assigned classes only
       'parent:view', 'parent:create', 'parent:update',
       'class:view',
       'subject:view',
@@ -121,6 +165,8 @@ export const DEFAULT_SCHOOL_ROLES = [
       'timetable:view',
       'report:view',
       'notification:create', 'notification:view',
+      'enrollment:view', 'enrollment:create',
+      'event:view',
     ],
   },
   {
@@ -129,6 +175,7 @@ export const DEFAULT_SCHOOL_ROLES = [
     description: 'Teacher with access to assigned subjects',
     isSystemRole: true,
     permissions: [
+      'dashboard:view',
       'student:view',
       'class:view',
       'subject:view',
@@ -173,6 +220,7 @@ export const DEFAULT_SCHOOL_ROLES = [
       'attendance:view', // Own children only
       'fee:view', // Own children only
       'notification:view',
+      'event:view', // View school events
     ],
   },
   {
@@ -186,6 +234,7 @@ export const DEFAULT_SCHOOL_ROLES = [
       'timetable:view',
       'subject:view',
       'notification:view',
+      'event:view', // View school events
     ],
   },
 ];
@@ -196,10 +245,14 @@ export const DEFAULT_SCHOOL_ROLES = [
 export const ALL_PERMISSIONS = [
   // User management
   'user:create', 'user:view', 'user:update', 'user:delete',
+  // Role management
+  'role:create', 'role:view', 'role:update', 'role:delete',
+  // Dashboard
+  'dashboard:view',
   // Student management
-  'student:create', 'student:view', 'student:update', 'student:delete',
+  'student:create', 'student:view', 'student:update', 'student:delete', 'student:approve',
   // Teacher management
-  'teacher:create', 'teacher:view', 'teacher:update', 'teacher:delete',
+  'teacher:create', 'teacher:view', 'teacher:update', 'teacher:delete', 'teacher:approve',
   // Parent management
   'parent:create', 'parent:view', 'parent:update', 'parent:delete',
   // Class management
@@ -209,7 +262,7 @@ export const ALL_PERMISSIONS = [
   // Exam management
   'exam:create', 'exam:view', 'exam:update', 'exam:delete',
   // Result management
-  'result:create', 'result:view', 'result:update', 'result:delete',
+  'result:create', 'result:view', 'result:update', 'result:delete', 'result:publish',
   // Fee management
   'fee:create', 'fee:view', 'fee:update', 'fee:delete',
   // Attendance
@@ -230,4 +283,8 @@ export const ALL_PERMISSIONS = [
   'transfer:create', 'transfer:view', 'transfer:update', 'transfer:approve',
   // Promotions
   'promotion:create', 'promotion:view', 'promotion:update', 'promotion:execute',
+  // Enrollments
+  'enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:delete', 'enrollment:bulk',
+  // Events
+  'event:create', 'event:view', 'event:update', 'event:delete',
 ];

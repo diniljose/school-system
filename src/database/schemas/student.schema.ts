@@ -87,7 +87,7 @@ export class Student {
   academicHistory: {
     academicYear: Types.ObjectId;
     class: Types.ObjectId;
-    section: Types.ObjectId;
+    section: string;
     rollNumber: string;
     result: string; // pass, fail, promoted, retained
     percentage: number;

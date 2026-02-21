@@ -22,20 +22,19 @@ import { QueryTransferDto } from './dto/query-transfer.dto';
 import { CompleteTransferInDto } from './dto/complete-transfer-in.dto';
 import { UpdateDocumentsDto } from './dto/update-documents.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Transfers')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('transfers')
 export class TransfersController {
   constructor(private readonly transfersService: TransfersService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('transfer:create')
   @ApiOperation({ summary: 'Initiate a transfer (auto-detects in/out from fields)' })
   @ApiResponse({ status: 201, description: 'Transfer initiated successfully' })
   async initiateTransfer(
@@ -58,7 +57,7 @@ export class TransfersController {
   }
 
   @Post('out')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('transfer:create')
   @ApiOperation({ summary: 'Initiate transfer out for a student' })
   @ApiResponse({
     status: 201,
@@ -78,7 +77,7 @@ export class TransfersController {
   }
 
   @Post(':id/complete-out')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('transfer:approve')
   @ApiOperation({ summary: 'Complete transfer out and generate TC' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({
@@ -96,7 +95,7 @@ export class TransfersController {
   }
 
   @Post('in')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('transfer:create')
   @ApiOperation({ summary: 'Initiate transfer in for a student' })
   @ApiResponse({
     status: 201,
@@ -116,7 +115,7 @@ export class TransfersController {
   }
 
   @Post(':id/complete-in')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('transfer:approve')
   @ApiOperation({ summary: 'Complete transfer in for a student' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({
@@ -135,7 +134,7 @@ export class TransfersController {
   }
 
   @Post(':id/cancel')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('transfer:update')
   @ApiOperation({ summary: 'Cancel a transfer request' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({ status: 200, description: 'Transfer cancelled successfully' })
@@ -150,12 +149,7 @@ export class TransfersController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('transfer:view')
   @ApiOperation({ summary: 'Get transfers with filters and pagination' })
   @ApiResponse({ status: 200, description: 'Transfers retrieved successfully' })
   async getTransfers(@Query() query: QueryTransferDto) {
@@ -169,13 +163,7 @@ export class TransfersController {
   }
 
   @Get('student/:studentId/history')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('transfer:view')
   @ApiOperation({ summary: 'Get transfer history for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiResponse({
@@ -188,12 +176,7 @@ export class TransfersController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('transfer:view')
   @ApiOperation({ summary: 'Get transfer details by ID' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({
@@ -206,12 +189,7 @@ export class TransfersController {
   }
 
   @Get(':id/certificate')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('transfer:view')
   @ApiOperation({ summary: 'Generate transfer certificate details' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({
@@ -228,7 +206,7 @@ export class TransfersController {
   }
 
   @Patch(':id/documents')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('transfer:update')
   @ApiOperation({ summary: 'Update transfer documents' })
   @ApiParam({ name: 'id', description: 'Transfer ID' })
   @ApiResponse({

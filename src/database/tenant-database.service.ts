@@ -24,6 +24,8 @@ import { NotificationSchema } from './schemas/notification.schema';
 import { AcademicYearSchema } from './schemas/academic-year.schema';
 import { SettingsSchema } from './schemas/settings.schema';
 import { RoleSchema } from './schemas/role.schema';
+import { EnrollmentSchema } from './schemas/enrollment.schema';
+import { EventSchema } from './schemas/event.schema';
 
 // Schema registry for tenant databases
 const TENANT_SCHEMAS: Record<string, Schema> = {
@@ -42,6 +44,8 @@ const TENANT_SCHEMAS: Record<string, Schema> = {
   AcademicYear: AcademicYearSchema,
   Settings: SettingsSchema,
   Role: RoleSchema,
+  Enrollment: EnrollmentSchema,
+  SchoolEvent: EventSchema,
 };
 
 @Injectable()
@@ -169,6 +173,20 @@ export class TenantDatabaseService implements OnModuleDestroy {
   async findTenantUserByEmail(schoolCode: string, email: string): Promise<any> {
     const UserModel = await this.getTenantModel<any>(schoolCode, 'User');
     return UserModel.findOne({ email }).exec();
+  }
+
+  /**
+   * Get role permissions by role code from tenant database
+   */
+  async getRolePermissions(schoolCode: string, roleCode: string): Promise<string[]> {
+    try {
+      const RoleModel = await this.getTenantModel<any>(schoolCode, 'Role');
+      const role = await RoleModel.findOne({ code: roleCode, isActive: true }).exec();
+      return role?.permissions || [];
+    } catch (error) {
+      this.logger.debug(`Could not fetch role permissions for ${roleCode}: ${error.message}`);
+      return [];
+    }
   }
 
   /**

@@ -34,6 +34,8 @@ import { TransportModule } from './modules/transport/transport.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { ClassTeacherAssignmentsModule } from './modules/class-teacher-assignments/class-teacher-assignments.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
+import { EventsModule } from './modules/events/events.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -93,6 +95,8 @@ import { AppService } from './app.service';
     RolesModule,
     ClassTeacherAssignmentsModule,
     DashboardModule,
+    EnrollmentsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

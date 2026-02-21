@@ -19,10 +19,9 @@ import {
 } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { GradeDto, UpdateGradeDto } from './dto/grading-system.dto';
 import {
@@ -33,18 +32,13 @@ import { UpdateWorkingDaysDto, CalendarEventDto } from './dto/working-days.dto';
 
 @ApiTags('Settings')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('settings')
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('settings:view')
   @ApiOperation({ summary: 'Get all school settings' })
   @ApiResponse({ status: 200, description: 'Settings retrieved successfully' })
   async getSettings(@CurrentUser('school') schoolId: string) {
@@ -52,7 +46,7 @@ export class SettingsController {
   }
 
   @Patch()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Update general settings' })
   @ApiResponse({ status: 200, description: 'Settings updated successfully' })
   @ApiResponse({ status: 404, description: 'Settings not found' })
@@ -64,12 +58,7 @@ export class SettingsController {
   }
 
   @Get('grading-system')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('settings:view')
   @ApiOperation({ summary: 'Get grading system configuration' })
   @ApiResponse({
     status: 200,
@@ -80,7 +69,7 @@ export class SettingsController {
   }
 
   @Patch('grading-system')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Update entire grading system' })
   @ApiResponse({
     status: 200,
@@ -95,7 +84,7 @@ export class SettingsController {
   }
 
   @Post('grading-system/grades')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Add a new grade to grading system' })
   @ApiResponse({ status: 201, description: 'Grade created successfully' })
   @ApiResponse({ status: 400, description: 'Grade already exists or overlaps' })
@@ -107,7 +96,7 @@ export class SettingsController {
   }
 
   @Patch('grading-system/grades/:gradeId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Update a specific grade' })
   @ApiParam({ name: 'gradeId', description: 'Grade index' })
   @ApiResponse({ status: 200, description: 'Grade updated successfully' })
@@ -121,7 +110,7 @@ export class SettingsController {
   }
 
   @Delete('grading-system/grades/:gradeId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Delete a grade from grading system' })
   @ApiParam({ name: 'gradeId', description: 'Grade index' })
   @ApiResponse({ status: 200, description: 'Grade deleted successfully' })
@@ -134,12 +123,7 @@ export class SettingsController {
   }
 
   @Get('fee-templates')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('settings:view')
   @ApiOperation({ summary: 'Get all fee templates' })
   @ApiResponse({
     status: 200,
@@ -150,7 +134,7 @@ export class SettingsController {
   }
 
   @Post('fee-templates')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Create a new fee template' })
   @ApiResponse({
     status: 201,
@@ -164,7 +148,7 @@ export class SettingsController {
   }
 
   @Patch('fee-templates/:templateId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Update a fee template' })
   @ApiParam({ name: 'templateId', description: 'Fee template index' })
   @ApiResponse({
@@ -185,7 +169,7 @@ export class SettingsController {
   }
 
   @Delete('fee-templates/:templateId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Delete a fee template' })
   @ApiParam({ name: 'templateId', description: 'Fee template index' })
   @ApiResponse({
@@ -201,12 +185,7 @@ export class SettingsController {
   }
 
   @Get('working-days')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('settings:view')
   @ApiOperation({ summary: 'Get working days configuration' })
   @ApiResponse({
     status: 200,
@@ -217,7 +196,7 @@ export class SettingsController {
   }
 
   @Patch('working-days')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({ summary: 'Update working days configuration' })
   @ApiResponse({
     status: 200,
@@ -231,12 +210,7 @@ export class SettingsController {
   }
 
   @Get('calendar')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('settings:view')
   @ApiOperation({
     summary: 'Get academic calendar events (placeholder)',
   })
@@ -253,7 +227,7 @@ export class SettingsController {
   }
 
   @Post('calendar/events')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({
     summary: 'Add a calendar event (placeholder)',
   })
@@ -269,7 +243,7 @@ export class SettingsController {
   }
 
   @Patch('calendar/events/:eventId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({
     summary: 'Update a calendar event (placeholder)',
   })
@@ -291,7 +265,7 @@ export class SettingsController {
   }
 
   @Delete('calendar/events/:eventId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('settings:update')
   @ApiOperation({
     summary: 'Delete a calendar event (placeholder)',
   })

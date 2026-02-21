@@ -25,20 +25,19 @@ import { ApplyFineDto } from './dto/apply-fine.dto';
 import { GenerateFeesDto } from './dto/generate-fees.dto';
 import { QueryFeeDto } from './dto/query-fee.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Fees')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('fees')
 export class FeesController {
   constructor(private readonly feesService: FeesService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('fee:create')
   @ApiOperation({ summary: 'Create a new fee' })
   @ApiResponse({ status: 201, description: 'Fee created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -54,7 +53,7 @@ export class FeesController {
   }
 
   @Post('generate')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('fee:create')
   @ApiOperation({ summary: 'Generate monthly fees for a class' })
   @ApiResponse({
     status: 201,
@@ -70,12 +69,7 @@ export class FeesController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get all fees with filters and pagination' })
   @ApiQuery({ name: 'studentId', required: false, type: String })
   @ApiQuery({ name: 'academicYearId', required: false, type: String })
@@ -98,12 +92,7 @@ export class FeesController {
   }
 
   @Get('pending')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get all pending fees' })
   @ApiQuery({ name: 'classId', required: false, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -120,12 +109,7 @@ export class FeesController {
   }
 
   @Get('overdue')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get all overdue fees' })
   @ApiResponse({
     status: 200,
@@ -136,12 +120,7 @@ export class FeesController {
   }
 
   @Get('defaulters')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get list of defaulters with pending payments' })
   @ApiQuery({ name: 'classId', required: false, type: String })
   @ApiResponse({
@@ -156,12 +135,7 @@ export class FeesController {
   }
 
   @Get('statistics')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get fee statistics for school' })
   @ApiQuery({ name: 'month', required: false, type: Number })
   @ApiQuery({ name: 'year', required: false, type: Number })
@@ -178,12 +152,7 @@ export class FeesController {
   }
 
   @Get('collection-report')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get collection report for a date range' })
   @ApiQuery({ name: 'startDate', required: true, type: String })
   @ApiQuery({ name: 'endDate', required: true, type: String })
@@ -205,14 +174,7 @@ export class FeesController {
   }
 
   @Get('student/:studentId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-    UserRole.CLASS_TEACHER,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get all fees for a student in an academic year' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
@@ -229,14 +191,7 @@ export class FeesController {
   }
 
   @Get('student/:studentId/statement')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-    UserRole.CLASS_TEACHER,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get complete fee statement for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
@@ -253,14 +208,7 @@ export class FeesController {
   }
 
   @Get('student/:studentId/payment-history')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-    UserRole.CLASS_TEACHER,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get payment history for a student' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiResponse({
@@ -272,13 +220,7 @@ export class FeesController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get a fee by ID' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Fee retrieved successfully' })
@@ -291,12 +233,7 @@ export class FeesController {
   }
 
   @Get(':id/receipt')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.ACCOUNTANT,
-  )
+  @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Generate receipt for a fee payment' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiQuery({ name: 'receiptNumber', required: true, type: String })
@@ -322,7 +259,7 @@ export class FeesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('fee:update')
   @ApiOperation({ summary: 'Update a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Fee updated successfully' })
@@ -340,7 +277,7 @@ export class FeesController {
   }
 
   @Post(':id/payment')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('fee:update')
   @ApiOperation({ summary: 'Record a payment for a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({
@@ -358,7 +295,7 @@ export class FeesController {
   }
 
   @Post(':id/discount')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('fee:update')
   @ApiOperation({ summary: 'Apply discount to a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Discount applied successfully' })
@@ -375,7 +312,7 @@ export class FeesController {
   }
 
   @Post(':id/fine')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('fee:update')
   @ApiOperation({ summary: 'Apply fine to a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Fine applied successfully' })
@@ -389,7 +326,7 @@ export class FeesController {
   }
 
   @Post(':id/waive')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('fee:update')
   @ApiOperation({ summary: 'Waive a fee' })
   @ApiParam({ name: 'id', description: 'Fee ID' })
   @ApiResponse({ status: 200, description: 'Fee waived successfully' })

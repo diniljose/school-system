@@ -127,6 +127,11 @@ export class CreateStudentDto {
   @IsString()
   currentSection?: string;
 
+  @ApiPropertyOptional({ description: 'Current academic year ID' })
+  @IsOptional()
+  @IsString()
+  currentAcademicYear?: string;
+
   @ApiPropertyOptional({ description: 'Roll number' })
   @IsOptional()
   @IsString()
