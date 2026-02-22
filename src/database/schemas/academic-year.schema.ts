@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type AcademicYearDocument = AcademicYear & Document;
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, collection: 'academicyears' })
 export class AcademicYear {
   @Prop({ type: Types.ObjectId, ref: 'School', required: true })
   school: Types.ObjectId;

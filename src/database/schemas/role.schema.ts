@@ -94,6 +94,12 @@ export const DEFAULT_SCHOOL_ROLES = [
       'enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:delete', 'enrollment:bulk',
       // Events
       'event:create', 'event:view', 'event:update', 'event:delete',
+      // Class-Teacher Assignments
+      'class-assignment:create', 'class-assignment:view', 'class-assignment:update', 'class-assignment:delete',
+      // School management
+      'school:view', 'school:update',
+      // Sections
+      'section:create', 'section:view', 'section:update', 'section:delete',
     ],
   },
   {
@@ -146,6 +152,68 @@ export const DEFAULT_SCHOOL_ROLES = [
       'enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:bulk',
       // Events
       'event:create', 'event:view', 'event:update', 'event:delete',
+      // Class-Teacher Assignments
+      'class-assignment:create', 'class-assignment:view', 'class-assignment:update', 'class-assignment:delete',
+      // School & Sections
+      'school:view', 'school:update',
+      'section:create', 'section:view', 'section:update', 'section:delete',
+    ],
+  },
+  {
+    name: 'Vice Principal',
+    code: 'vice_principal',
+    description: 'Vice principal with similar access to principal',
+    isSystemRole: true,
+    permissions: [
+      // User management
+      'user:view', 'user:create', 'user:update',
+      // Role management
+      'role:view', 'role:create', 'role:update',
+      // Dashboard
+      'dashboard:view',
+      // Student management
+      'student:view', 'student:create', 'student:update', 'student:approve',
+      // Teacher management
+      'teacher:view', 'teacher:create', 'teacher:update', 'teacher:approve',
+      // Parent management
+      'parent:view', 'parent:create', 'parent:update',
+      // Class management
+      'class:view', 'class:create', 'class:update',
+      // Subject management
+      'subject:view', 'subject:create', 'subject:update',
+      // Exam management
+      'exam:view', 'exam:create', 'exam:update',
+      // Result management
+      'result:view', 'result:create', 'result:update', 'result:publish',
+      // Fee management
+      'fee:view', 'fee:create', 'fee:update',
+      // Attendance
+      'attendance:view', 'attendance:create', 'attendance:update',
+      // Timetable
+      'timetable:view', 'timetable:create', 'timetable:update',
+      // Transport
+      'transport:view', 'transport:create', 'transport:update',
+      // Academic year
+      'academic-year:view', 'academic-year:create', 'academic-year:update',
+      // Reports
+      'report:view', 'report:export',
+      // Settings
+      'settings:view',
+      // Notifications
+      'notification:create', 'notification:view',
+      // Transfers
+      'transfer:view', 'transfer:create', 'transfer:update', 'transfer:approve',
+      // Promotions
+      'promotion:view', 'promotion:create', 'promotion:update', 'promotion:execute',
+      // Enrollments
+      'enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:bulk',
+      // Events
+      'event:create', 'event:view', 'event:update', 'event:delete',
+      // Class-Teacher Assignments
+      'class-assignment:create', 'class-assignment:view', 'class-assignment:update', 'class-assignment:delete',
+      // School & Sections
+      'school:view',
+      'section:create', 'section:view', 'section:update', 'section:delete',
     ],
   },
   {
@@ -159,6 +227,8 @@ export const DEFAULT_SCHOOL_ROLES = [
       'parent:view', 'parent:create', 'parent:update',
       'class:view',
       'subject:view',
+      'section:view',
+      'teacher:view',
       'exam:view',
       'result:view', 'result:create', 'result:update', // For assigned classes only
       'attendance:view', 'attendance:create', 'attendance:update', // For assigned classes only
@@ -167,6 +237,29 @@ export const DEFAULT_SCHOOL_ROLES = [
       'notification:create', 'notification:view',
       'enrollment:view', 'enrollment:create',
       'event:view',
+      'class-assignment:view', 'class-assignment:create', 'class-assignment:update',
+    ],
+  },
+  {
+    name: 'Teacher',
+    code: 'teacher',
+    description: 'Regular teacher with basic access',
+    isSystemRole: true,
+    permissions: [
+      'dashboard:view',
+      'student:view',
+      'parent:view',
+      'class:view',
+      'subject:view',
+      'section:view',
+      'teacher:view',
+      'exam:view',
+      'result:view', 'result:create', 'result:update',
+      'attendance:view', 'attendance:create', 'attendance:update',
+      'timetable:view',
+      'notification:view',
+      'event:view',
+      'class-assignment:view',
     ],
   },
   {
@@ -179,11 +272,15 @@ export const DEFAULT_SCHOOL_ROLES = [
       'student:view',
       'class:view',
       'subject:view',
+      'section:view',
+      'teacher:view',
       'exam:view',
       'result:view', 'result:create', 'result:update', // For assigned subjects only
       'attendance:view', 'attendance:create', 'attendance:update',
       'timetable:view',
       'notification:view',
+      'event:view',
+      'class-assignment:view',
     ],
   },
   {
@@ -192,6 +289,7 @@ export const DEFAULT_SCHOOL_ROLES = [
     description: 'Financial management access',
     isSystemRole: true,
     permissions: [
+      'dashboard:view',
       'student:view',
       'parent:view',
       'fee:create', 'fee:view', 'fee:update', 'fee:delete',
@@ -204,6 +302,7 @@ export const DEFAULT_SCHOOL_ROLES = [
     description: 'Library management access',
     isSystemRole: true,
     permissions: [
+      'dashboard:view',
       'student:view',
       'teacher:view',
       'class:view',
@@ -287,4 +386,12 @@ export const ALL_PERMISSIONS = [
   'enrollment:create', 'enrollment:view', 'enrollment:update', 'enrollment:delete', 'enrollment:bulk',
   // Events
   'event:create', 'event:view', 'event:update', 'event:delete',
+  // Class-Teacher Assignments
+  'class-assignment:create', 'class-assignment:view', 'class-assignment:update', 'class-assignment:delete',
+  // School management
+  'school:create', 'school:view', 'school:update', 'school:delete',
+  // Subscription management
+  'subscription:create', 'subscription:view', 'subscription:update', 'subscription:delete',
+  // Section management
+  'section:create', 'section:view', 'section:update', 'section:delete',
 ];

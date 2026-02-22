@@ -21,20 +21,19 @@ import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { ChangePlanDto } from './dto/change-plan.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { SchoolAccessGuard } from '../../common/guards/school-access.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('subscriptions')
 @ApiBearerAuth()
 @Controller('subscriptions')
-@UseGuards(JwtAuthGuard, RolesGuard, SchoolAccessGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, SchoolAccessGuard)
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
   @Post()
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('subscription:create')
   @ApiOperation({ summary: 'Create a new subscription' })
   @ApiResponse({
     status: 201,
@@ -47,6 +46,7 @@ export class SubscriptionsController {
   }
 
   @Get()
+  @RequirePermissions('subscription:view')
   @ApiOperation({
     summary: 'Get all subscriptions with pagination and filters',
   })
@@ -59,6 +59,7 @@ export class SubscriptionsController {
   }
 
   @Get(':id')
+  @RequirePermissions('subscription:view')
   @ApiOperation({ summary: 'Get subscription by ID' })
   @ApiResponse({
     status: 200,
@@ -70,7 +71,7 @@ export class SubscriptionsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('subscription:update')
   @ApiOperation({ summary: 'Update subscription' })
   @ApiResponse({
     status: 200,
@@ -85,7 +86,7 @@ export class SubscriptionsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('subscription:delete')
   @ApiOperation({ summary: 'Delete subscription' })
   @ApiResponse({
     status: 200,
@@ -97,7 +98,7 @@ export class SubscriptionsController {
   }
 
   @Post(':schoolId/change-plan')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('subscription:update')
   @ApiOperation({ summary: 'Change subscription plan' })
   @ApiResponse({ status: 200, description: 'Plan changed successfully' })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
@@ -109,7 +110,7 @@ export class SubscriptionsController {
   }
 
   @Post(':id/payment')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.ACCOUNTANT)
+  @RequirePermissions('subscription:update')
   @ApiOperation({ summary: 'Record a payment' })
   @ApiResponse({ status: 200, description: 'Payment recorded successfully' })
   @ApiResponse({ status: 404, description: 'Subscription not found' })
@@ -121,7 +122,7 @@ export class SubscriptionsController {
   }
 
   @Get(':id/usage')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('subscription:view')
   @ApiOperation({ summary: 'Get subscription usage statistics' })
   @ApiResponse({
     status: 200,

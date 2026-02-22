@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsArray, IsMongoId } from 'class-validator';
+import { IsNotEmpty, IsString, IsArray, IsMongoId, IsOptional, IsDateString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class AssignSubjectToClassDto {
@@ -17,6 +17,16 @@ export class AssignSubjectToClassDto {
   @IsString({ each: true })
   @IsNotEmpty()
   sections: string[];
+
+  @ApiProperty({ description: 'Academic Year ID', required: false })
+  @IsMongoId()
+  @IsOptional()
+  academicYearId?: string;
+
+  @ApiProperty({ description: 'Start date for this assignment', required: false, example: '2026-02-22' })
+  @IsDateString()
+  @IsOptional()
+  startDate?: string;
 }
 
 export class RemoveSubjectFromClassDto {

@@ -46,4 +46,32 @@ export class DashboardController {
       academicYearId,
     );
   }
+
+  @Get('recent-activities')
+  @RequirePermissions('dashboard:view')
+  @ApiOperation({ summary: 'Get recent activities for dashboard' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of activities to return (default: 10)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Recent activities retrieved successfully',
+  })
+  async getRecentActivities(
+    @CurrentUser('school') schoolId: string,
+    @Query('limit') limit?: number,
+    @Req() req?: any,
+  ) {
+    return this.dashboardService.getRecentActivities(
+      schoolId,
+      {
+        schoolCode: req.user?.schoolCode,
+        isTenantUser: req.user?.isTenantUser,
+      },
+      limit || 10,
+    );
+  }
 }

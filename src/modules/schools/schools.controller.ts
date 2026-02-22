@@ -23,20 +23,19 @@ import { QuerySchoolDto } from './dto/query-school.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { UpdateFeaturesDto } from './dto/update-features.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { SchoolAccessGuard } from '../../common/guards/school-access.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('schools')
 @ApiBearerAuth()
 @Controller('schools')
-@UseGuards(JwtAuthGuard, RolesGuard, SchoolAccessGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, SchoolAccessGuard)
 export class SchoolsController {
   constructor(private readonly schoolsService: SchoolsService) {}
 
   @Post()
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:create')
   @ApiOperation({ summary: 'Create a new school' })
   @ApiResponse({ status: 201, description: 'School created successfully' })
   @ApiResponse({
@@ -49,6 +48,7 @@ export class SchoolsController {
   }
 
   @Get()
+  @RequirePermissions('school:view')
   @ApiOperation({ summary: 'Get all schools with pagination and filters' })
   @ApiResponse({ status: 200, description: 'Schools retrieved successfully' })
   findAll(@Query() query: QuerySchoolDto) {
@@ -56,7 +56,7 @@ export class SchoolsController {
   }
 
   @Get('stats')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:view')
   @ApiOperation({ summary: 'Get school statistics' })
   @ApiResponse({
     status: 200,
@@ -71,7 +71,7 @@ export class SchoolsController {
   // ════════════════════════════════════════════════════════════════════════════
 
   @Get('pending-approval')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:view')
   @ApiOperation({ summary: 'Get schools pending approval' })
   @ApiResponse({
     status: 200,
@@ -85,7 +85,7 @@ export class SchoolsController {
   }
 
   @Post(':id/approve')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Approve a pending school registration' })
   @ApiResponse({ status: 200, description: 'School approved successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -95,7 +95,7 @@ export class SchoolsController {
   }
 
   @Post(':id/reject')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Reject a pending school registration' })
   @ApiResponse({ status: 200, description: 'School rejected successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -109,7 +109,7 @@ export class SchoolsController {
   }
 
   @Post(':id/suspend')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Suspend an active school' })
   @ApiResponse({ status: 200, description: 'School suspended successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -119,7 +119,7 @@ export class SchoolsController {
   }
 
   @Post(':id/reactivate')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Reactivate a suspended school' })
   @ApiResponse({ status: 200, description: 'School reactivated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -133,6 +133,7 @@ export class SchoolsController {
   // ════════════════════════════════════════════════════════════════════════════
 
   @Get(':id')
+  @RequirePermissions('school:view')
   @ApiOperation({ summary: 'Get school by ID' })
   @ApiResponse({ status: 200, description: 'School retrieved successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -141,7 +142,7 @@ export class SchoolsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Update school' })
   @ApiResponse({ status: 200, description: 'School updated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -154,7 +155,7 @@ export class SchoolsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PLATFORM_ADMIN)
+  @RequirePermissions('school:delete')
   @ApiOperation({ summary: 'Delete school' })
   @ApiResponse({ status: 200, description: 'School deleted successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -163,7 +164,7 @@ export class SchoolsController {
   }
 
   @Patch(':id/settings')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Update school settings' })
   @ApiResponse({ status: 200, description: 'Settings updated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -175,7 +176,7 @@ export class SchoolsController {
   }
 
   @Patch(':id/features')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Update school features' })
   @ApiResponse({ status: 200, description: 'Features updated successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })
@@ -187,7 +188,7 @@ export class SchoolsController {
   }
 
   @Patch(':id/features/:feature')
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @RequirePermissions('school:update')
   @ApiOperation({ summary: 'Toggle a single feature' })
   @ApiResponse({ status: 200, description: 'Feature toggled successfully' })
   @ApiResponse({ status: 404, description: 'School not found' })

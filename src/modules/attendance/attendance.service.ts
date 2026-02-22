@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
@@ -18,9 +18,18 @@ import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { MarkIndividualAttendanceDto } from './dto/mark-individual-attendance.dto';
 import { QueryAttendanceDto } from './dto/query-attendance.dto';
 import { AttendanceStatus } from '../../common/enums/student-status.enum';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
+
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class AttendanceService {
+  private readonly logger = new Logger(AttendanceService.name);
+
   constructor(
     @InjectModel(Attendance.name)
     private attendanceModel: Model<AttendanceDocument>,
@@ -28,22 +37,72 @@ export class AttendanceService {
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(AcademicYear.name)
     private academicYearModel: Model<AcademicYearDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  // Helper methods to get tenant-aware models
+  private async getAttendanceModel(context?: TenantContext): Promise<Model<AttendanceDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<AttendanceDocument>(
+        context.schoolCode,
+        'Attendance',
+      );
+    }
+    return this.attendanceModel;
+  }
+
+  private async getStudentModel(context?: TenantContext): Promise<Model<StudentDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<StudentDocument>(
+        context.schoolCode,
+        'Student',
+      );
+    }
+    return this.studentModel;
+  }
+
+  private async getClassModel(context?: TenantContext): Promise<Model<ClassDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ClassDocument>(
+        context.schoolCode,
+        'Class',
+      );
+    }
+    return this.classModel;
+  }
+
+  private async getAcademicYearModel(context?: TenantContext): Promise<Model<AcademicYearDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<AcademicYearDocument>(
+        context.schoolCode,
+        'AcademicYear',
+      );
+    }
+    return this.academicYearModel;
+  }
 
   async markClassAttendance(
     markAttendanceDto: MarkAttendanceDto,
     schoolId: string,
     userId: string,
+    context?: TenantContext,
   ) {
     const { classId, section, date, records, subjectId, period } =
       markAttendanceDto;
 
-    const classDoc = await this.classModel.findOne({
+    const classModel = await this.getClassModel(context);
+    const attendanceModel = await this.getAttendanceModel(context);
+    const academicYearModel = await this.getAcademicYearModel(context);
+
+    this.logger.debug(`Querying class with ID: ${classId}, School: ${schoolId}, Context: ${JSON.stringify(context)}`);
+
+    const classDoc = await classModel.findOne({
       _id: new Types.ObjectId(classId),
       school: new Types.ObjectId(schoolId),
     });
 
     if (!classDoc) {
+      this.logger.error(`Class not found for ID: ${classId}, School: ${schoolId}`);
       throw new NotFoundException('Class not found');
     }
 
@@ -71,7 +130,7 @@ export class AttendanceService {
       filter.subject = new Types.ObjectId(subjectId);
     }
 
-    const existingAttendance = await this.attendanceModel.findOne(filter);
+    const existingAttendance = await attendanceModel.findOne(filter);
 
     const attendanceRecords = records.map((record) => ({
       student: new Types.ObjectId(record.student || record.studentId),
@@ -81,10 +140,12 @@ export class AttendanceService {
       remarks: record.remarks || record.note || '',
     }));
 
-    const currentAcademicYear = await this.academicYearModel.findOne({
-      school: new Types.ObjectId(schoolId),
+    const currentAcademicYear = await academicYearModel.findOne({
+      school: schoolId,
       isCurrent: true,
     });
+
+    this.logger.debug(`Academic year query - School: ${schoolId}, Result: ${currentAcademicYear ? 'FOUND' : 'NOT FOUND'}, Context: ${JSON.stringify(context)}`);
 
     if (!currentAcademicYear) {
       throw new NotFoundException('No current academic year found for this school');
@@ -108,7 +169,7 @@ export class AttendanceService {
       return existingAttendance;
     }
 
-    const attendance = new this.attendanceModel(attendanceData);
+    const attendance = new attendanceModel(attendanceData);
     await attendance.save();
     return attendance;
   }
@@ -117,6 +178,7 @@ export class AttendanceService {
     markIndividualDto: MarkIndividualAttendanceDto,
     schoolId: string,
     userId: string,
+    context?: TenantContext,
   ) {
     const {
       studentId,
@@ -131,12 +193,17 @@ export class AttendanceService {
       period,
     } = markIndividualDto;
 
+    const studentModel = await this.getStudentModel(context);
+    const classModel = await this.getClassModel(context);
+    const attendanceModel = await this.getAttendanceModel(context);
+    const academicYearModel = await this.getAcademicYearModel(context);
+
     const [student, classDoc] = await Promise.all([
-      this.studentModel.findOne({
+      studentModel.findOne({
         _id: new Types.ObjectId(studentId),
         school: new Types.ObjectId(schoolId),
       }),
-      this.classModel.findOne({
+      classModel.findOne({
         _id: new Types.ObjectId(classId),
         school: new Types.ObjectId(schoolId),
       }),
@@ -164,7 +231,7 @@ export class AttendanceService {
       filter.subject = new Types.ObjectId(subjectId);
     }
 
-    let attendance = await this.attendanceModel.findOne(filter);
+    let attendance = await attendanceModel.findOne(filter);
 
     const studentRecord = {
       student: new Types.ObjectId(studentId),
@@ -188,7 +255,7 @@ export class AttendanceService {
       attendance.markedBy = new Types.ObjectId(userId);
       await attendance.save();
     } else {
-      const currentAcademicYear = await this.academicYearModel.findOne({
+      const currentAcademicYear = await academicYearModel.findOne({
         school: new Types.ObjectId(schoolId),
         isCurrent: true,
       });
@@ -197,7 +264,7 @@ export class AttendanceService {
         throw new NotFoundException('No current academic year found for this school');
       }
 
-      attendance = new this.attendanceModel({
+      attendance = new attendanceModel({
         school: new Types.ObjectId(schoolId),
         academicYear: currentAcademicYear._id,
         class: new Types.ObjectId(classId),
@@ -214,7 +281,7 @@ export class AttendanceService {
     return attendance;
   }
 
-  async getStudentAttendance(studentId: string, query: QueryAttendanceDto) {
+  async getStudentAttendance(studentId: string, query: QueryAttendanceDto, context?: TenantContext) {
     const {
       startDate,
       endDate,
@@ -252,7 +319,9 @@ export class AttendanceService {
       filter.period = period;
     }
 
-    const attendanceRecords = await this.attendanceModel
+    const attendanceModel = await this.getAttendanceModel(context);
+
+    const attendanceRecords = await attendanceModel
       .find(filter)
       .populate('class', 'name grade')
       .populate('subject', 'name code')
@@ -261,7 +330,7 @@ export class AttendanceService {
       .limit(limit)
       .exec();
 
-    const total = await this.attendanceModel.countDocuments(filter);
+    const total = await attendanceModel.countDocuments(filter);
 
     const data = attendanceRecords
       .map((record) => {
@@ -298,7 +367,17 @@ export class AttendanceService {
     };
   }
 
-  async getClassAttendance(classId: string, section: string, date: string) {
+  async getClassAttendance(classId: string, section: string, date: string, context?: TenantContext) {
+    // Get the correct model based on tenant context
+    const classModel = await this.getClassModel(context);
+    const attendanceModel = await this.getAttendanceModel(context);
+
+    // Validate that class exists
+    const classExists = await classModel.findById(new Types.ObjectId(classId));
+    if (!classExists) {
+      throw new NotFoundException('Class not found');
+    }
+
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
 
@@ -310,7 +389,7 @@ export class AttendanceService {
       filter.section = section;
     }
 
-    const attendance = await this.attendanceModel
+    const attendance = await attendanceModel
       .find(filter)
       .populate('subject', 'name code')
       .populate({
@@ -320,16 +399,17 @@ export class AttendanceService {
       .exec();
 
     if (!attendance || attendance.length === 0) {
-      return { data: [] };
+      return { success: true, data: [] };
     }
 
-    return attendance;
+    return { success: true, data: attendance };
   }
 
   async getAttendanceStatistics(
     studentId: string,
     startDate?: string,
     endDate?: string,
+    context?: TenantContext,
   ) {
     const filter: any = {
       'records.student': new Types.ObjectId(studentId),
@@ -349,7 +429,8 @@ export class AttendanceService {
       }
     }
 
-    const attendanceRecords = await this.attendanceModel.find(filter).exec();
+    const attendanceModel = await this.getAttendanceModel(context);
+    const attendanceRecords = await attendanceModel.find(filter).exec();
 
     let totalDays = 0;
     let presentDays = 0;
@@ -401,11 +482,13 @@ export class AttendanceService {
     };
   }
 
-  async getAbsentees(classId: string, section: string, date: string) {
+  async getAbsentees(classId: string, section: string, date: string, context?: TenantContext) {
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
 
-    const attendance = await this.attendanceModel
+    const attendanceModel = await this.getAttendanceModel(context);
+
+    const attendance = await attendanceModel
       .findOne({
         class: new Types.ObjectId(classId),
         section,
@@ -442,11 +525,14 @@ export class AttendanceService {
     section: string,
     date: string,
     threshold: number = 75,
+    context?: TenantContext,
   ) {
     const endDate = new Date(date);
     endDate.setHours(23, 59, 59, 999);
 
-    const students = await this.studentModel
+    const studentModel = await this.getStudentModel(context);
+
+    const students = await studentModel
       .find({
         currentClass: new Types.ObjectId(classId),
       })
@@ -460,6 +546,7 @@ export class AttendanceService {
         student._id.toString(),
         undefined,
         date,
+        context,
       );
 
       if (stats.attendancePercentage < threshold) {
@@ -493,6 +580,7 @@ export class AttendanceService {
     month: number,
     year: number,
     subjectId?: string,
+    context?: TenantContext,
   ) {
     const startDate = new Date(year, month - 1, 1);
     startDate.setHours(0, 0, 0, 0);
@@ -509,7 +597,9 @@ export class AttendanceService {
       filter.subject = new Types.ObjectId(subjectId);
     }
 
-    const attendanceRecords = await this.attendanceModel
+    const attendanceModel = await this.getAttendanceModel(context);
+
+    const attendanceRecords = await attendanceModel
       .find(filter)
       .populate('subject', 'name code')
       .sort({ date: 1 })
@@ -582,7 +672,7 @@ export class AttendanceService {
     };
   }
 
-  async getYearlyReport(studentId: string, year: number, subjectId?: string) {
+  async getYearlyReport(studentId: string, year: number, subjectId?: string, context?: TenantContext) {
     const startDate = new Date(year, 0, 1);
     startDate.setHours(0, 0, 0, 0);
 
@@ -598,7 +688,9 @@ export class AttendanceService {
       filter.subject = new Types.ObjectId(subjectId);
     }
 
-    const attendanceRecords = await this.attendanceModel
+    const attendanceModel = await this.getAttendanceModel(context);
+
+    const attendanceRecords = await attendanceModel
       .find(filter)
       .populate('subject', 'name code')
       .exec();

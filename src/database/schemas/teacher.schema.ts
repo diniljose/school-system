@@ -3,6 +3,29 @@ import { Document, Types } from 'mongoose';
 
 export type TeacherDocument = Teacher & Document;
 
+@Schema({ _id: false })
+class SubjectAssignment {
+  @Prop({ type: Types.ObjectId, ref: 'Subject', required: true })
+  subject: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Class', required: true })
+  class: Types.ObjectId;
+
+  @Prop({ type: [String], default: [] })
+  sections: string[];
+
+  @Prop({ type: Types.ObjectId, ref: 'AcademicYear' })
+  academicYear?: Types.ObjectId;
+
+  @Prop()
+  assignedDate?: Date;
+
+  @Prop()
+  startDate?: Date;
+}
+
+const SubjectAssignmentSchema = SchemaFactory.createForClass(SubjectAssignment);
+
 @Schema({ timestamps: true })
 export class Teacher {
   @Prop({ type: Types.ObjectId, ref: 'School', required: true })
@@ -65,12 +88,8 @@ export class Teacher {
   @Prop({ type: String })
   classTeacherSection: string; // Section they are class teacher of (e.g., 'A', 'B')
 
-  @Prop({ type: [Object], default: [] })
-  subjectAssignments: {
-    subject: Types.ObjectId; // Reference to Subject
-    class: Types.ObjectId;   // Reference to Class  
-    sections: string[];      // e.g., ['A', 'B']
-  }[];
+  @Prop({ type: [SubjectAssignmentSchema], default: [] })
+  subjectAssignments: SubjectAssignment[];
 
   @Prop({ type: [Object], default: [] })
   qualifications: {

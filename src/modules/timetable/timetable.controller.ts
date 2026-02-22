@@ -23,21 +23,20 @@ import { UpdateTimetableDto } from './dto/update-timetable.dto';
 import { AddPeriodDto } from './dto/add-period.dto';
 import { QueryTimetableDto } from './dto/query-timetable.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 import { DayOfWeek } from '../../database/schemas/timetable.schema';
 
 @ApiTags('Timetable')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('timetable')
 export class TimetableController {
   constructor(private readonly timetableService: TimetableService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('timetable:create')
   @ApiOperation({ summary: 'Create a new timetable' })
   @ApiResponse({ status: 201, description: 'Timetable created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -54,13 +53,7 @@ export class TimetableController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('timetable:view')
   @ApiOperation({ summary: 'Get all timetables with filters and pagination' })
   @ApiQuery({ name: 'academicYearId', required: false, type: String })
   @ApiQuery({ name: 'classId', required: false, type: String })
@@ -81,13 +74,7 @@ export class TimetableController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('timetable:view')
   @ApiOperation({ summary: 'Get timetable by ID' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiResponse({ status: 200, description: 'Timetable retrieved successfully' })
@@ -100,15 +87,7 @@ export class TimetableController {
   }
 
   @Get('class/:classId/:section')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-    UserRole.STUDENT,
-    UserRole.PARENT,
-  )
+  @RequirePermissions('timetable:view')
   @ApiOperation({ summary: 'Get timetable by class and section' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
   @ApiParam({ name: 'section', description: 'Section name' })
@@ -124,7 +103,7 @@ export class TimetableController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('timetable:update')
   @ApiOperation({ summary: 'Update timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiResponse({ status: 200, description: 'Timetable updated successfully' })
@@ -145,7 +124,7 @@ export class TimetableController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('timetable:delete')
   @ApiOperation({ summary: 'Delete timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiResponse({ status: 200, description: 'Timetable deleted successfully' })
@@ -158,7 +137,7 @@ export class TimetableController {
   }
 
   @Post(':id/period')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('timetable:update')
   @ApiOperation({ summary: 'Add a period to timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiQuery({ name: 'day', required: true, enum: DayOfWeek })
@@ -174,7 +153,7 @@ export class TimetableController {
   }
 
   @Patch(':id/period/:day/:periodIndex')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('timetable:update')
   @ApiOperation({ summary: 'Update a specific period in timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiParam({ name: 'day', enum: DayOfWeek, description: 'Day of week' })
@@ -200,7 +179,7 @@ export class TimetableController {
   }
 
   @Delete(':id/period/:day/:periodIndex')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('timetable:delete')
   @ApiOperation({ summary: 'Remove a period from timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiParam({ name: 'day', enum: DayOfWeek, description: 'Day of week' })
@@ -219,12 +198,7 @@ export class TimetableController {
   }
 
   @Get('teacher/:teacherId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-  )
+  @RequirePermissions('timetable:view')
   @ApiOperation({ summary: 'Get teacher timetable' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
@@ -240,7 +214,7 @@ export class TimetableController {
   }
 
   @Get(':id/conflicts')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('timetable:view')
   @ApiOperation({ summary: 'Check for conflicts in timetable' })
   @ApiParam({ name: 'id', description: 'Timetable ID' })
   @ApiResponse({
@@ -253,7 +227,7 @@ export class TimetableController {
   }
 
   @Get('available-teachers')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('timetable:view')
   @ApiOperation({ summary: 'Get available teachers for a specific period' })
   @ApiQuery({ name: 'day', required: true, enum: DayOfWeek })
   @ApiQuery({
@@ -279,7 +253,7 @@ export class TimetableController {
   }
 
   @Get('available-rooms')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('timetable:view')
   @ApiOperation({ summary: 'Get available rooms for a specific period' })
   @ApiQuery({ name: 'day', required: true, enum: DayOfWeek })
   @ApiQuery({

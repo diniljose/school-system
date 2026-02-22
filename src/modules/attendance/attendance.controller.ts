@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,6 +16,7 @@ import {
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AttendanceService } from './attendance.service';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { MarkIndividualAttendanceDto } from './dto/mark-individual-attendance.dto';
@@ -36,20 +38,31 @@ export class AttendanceController {
   @ApiOperation({ summary: 'Get attendance records with filters' })
   @ApiQuery({ name: 'classId', required: false, type: String })
   @ApiQuery({ name: 'date', required: false, type: String })
+  @ApiQuery({ name: 'section', required: false, type: String })
   @ApiQuery({ name: 'studentId', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Attendance records retrieved' })
   async getAttendance(
     @Query('classId') classId?: string,
     @Query('date') date?: string,
+    @Query('section') section?: string,
     @Query('studentId') studentId?: string,
+    @Req() req?: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
+
     if (studentId) {
-      return this.attendanceService.getStudentAttendance(studentId, { startDate: date, endDate: date } as any);
+      return this.attendanceService.getStudentAttendance(studentId, { startDate: date, endDate: date } as any, tenantContext);
     }
-    if (classId && date) {
-      return this.attendanceService.getClassAttendance(classId, null, date);
+    // For class attendance, at least classId is needed
+    if (classId) {
+      // If date is not provided, use today's date
+      const attendanceDate = date ? date : new Date().toISOString().split('T')[0];
+      return this.attendanceService.getClassAttendance(classId, section || null, attendanceDate, tenantContext);
     }
-    return { data: [] };
+    return { success: true, data: [] };
   }
 
   @Post()
@@ -58,13 +71,19 @@ export class AttendanceController {
   @ApiResponse({ status: 201, description: 'Attendance marked successfully' })
   async markAttendanceAlias(
     @Body() markAttendanceDto: MarkAttendanceDto,
-    @CurrentUser('school') schoolId: string,
+    @CurrentUser('schoolId') schoolId: string,
     @CurrentUser('id') userId: string,
+    @Req() req: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
     return this.attendanceService.markClassAttendance(
       markAttendanceDto,
       schoolId,
       userId,
+      tenantContext,
     );
   }
 
@@ -79,13 +98,19 @@ export class AttendanceController {
   @ApiResponse({ status: 404, description: 'Class or section not found' })
   async markClassAttendance(
     @Body() markAttendanceDto: MarkAttendanceDto,
-    @CurrentUser('school') schoolId: string,
+    @CurrentUser('schoolId') schoolId: string,
     @CurrentUser('id') userId: string,
+    @Req() req: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
     return this.attendanceService.markClassAttendance(
       markAttendanceDto,
       schoolId,
       userId,
+      tenantContext,
     );
   }
 
@@ -100,13 +125,19 @@ export class AttendanceController {
   @ApiResponse({ status: 404, description: 'Student or class not found' })
   async markIndividualAttendance(
     @Body() markIndividualDto: MarkIndividualAttendanceDto,
-    @CurrentUser('school') schoolId: string,
+    @CurrentUser('schoolId') schoolId: string,
     @CurrentUser('id') userId: string,
+    @Req() req: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
     return this.attendanceService.markIndividualAttendance(
       markIndividualDto,
       schoolId,
       userId,
+      tenantContext,
     );
   }
 
@@ -159,8 +190,13 @@ export class AttendanceController {
   async getStudentAttendance(
     @Param('studentId') studentId: string,
     @Query() query: QueryAttendanceDto,
+    @Req() req: Request,
   ) {
-    return this.attendanceService.getStudentAttendance(studentId, query);
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
+    return this.attendanceService.getStudentAttendance(studentId, query, tenantContext);
   }
 
   @Get('class/:classId')
@@ -213,11 +249,17 @@ export class AttendanceController {
     @Param('studentId') studentId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Req() req?: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
     return this.attendanceService.getAttendanceStatistics(
       studentId,
       startDate,
       endDate,
+      tenantContext,
     );
   }
 
@@ -243,8 +285,13 @@ export class AttendanceController {
     @Param('classId') classId: string,
     @Query('section') section: string,
     @Query('date') date: string,
+    @Req() req?: Request,
   ) {
-    return this.attendanceService.getAbsentees(classId, section, date);
+    const tenantContext = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
+    return this.attendanceService.getAbsentees(classId, section, date, tenantContext);
   }
 
   @Get('class/:classId/defaulters')
@@ -274,12 +321,18 @@ export class AttendanceController {
     @Query('section') section: string,
     @Query('date') date: string,
     @Query('threshold') threshold?: number,
+    @Req() req?: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
     return this.attendanceService.getDefaulters(
       classId,
       section,
       date,
       threshold || 75,
+      tenantContext,
     );
   }
 
@@ -313,12 +366,18 @@ export class AttendanceController {
     @Query('month') month: number,
     @Query('year') year: number,
     @Query('subjectId') subjectId?: string,
+    @Req() req?: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
     return this.attendanceService.getMonthlyReport(
       studentId,
       Number(month),
       Number(year),
       subjectId,
+      tenantContext,
     );
   }
 
@@ -345,11 +404,17 @@ export class AttendanceController {
     @Param('studentId') studentId: string,
     @Query('year') year: number,
     @Query('subjectId') subjectId?: string,
+    @Req() req?: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
     return this.attendanceService.getYearlyReport(
       studentId,
       Number(year),
       subjectId,
+      tenantContext,
     );
   }
 }

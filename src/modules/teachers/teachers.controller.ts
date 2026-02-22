@@ -26,20 +26,19 @@ import { AssignSubjectDto } from './dto/assign-subject.dto';
 import { AssignClassDto } from './dto/assign-class.dto';
 import { AssignSubjectToClassDto, RemoveSubjectFromClassDto } from './dto/assign-subject-to-class.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Teachers')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('teachers')
 export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('teacher:create')
   @ApiOperation({
     summary: 'Create new teacher with auto-generated employee ID',
   })
@@ -57,13 +56,7 @@ export class TeachersController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('teacher:view')
   @ApiOperation({ summary: 'Get all teachers with filters and pagination' })
   @ApiQuery({ name: 'department', required: false })
   @ApiQuery({ name: 'designation', required: false })
@@ -86,13 +79,7 @@ export class TeachersController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('teacher:view')
   @ApiOperation({ summary: 'Get teacher by ID' })
   @ApiResponse({ status: 200, description: 'Teacher retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Teacher not found' })
@@ -108,7 +95,7 @@ export class TeachersController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('teacher:update')
   @ApiOperation({ summary: 'Update teacher details' })
   @ApiResponse({ status: 200, description: 'Teacher updated successfully' })
   @ApiResponse({ status: 404, description: 'Teacher not found' })
@@ -125,7 +112,7 @@ export class TeachersController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('teacher:delete')
   @ApiOperation({ summary: 'Delete teacher (soft delete)' })
   @ApiResponse({ status: 200, description: 'Teacher deleted successfully' })
   @ApiResponse({ status: 404, description: 'Teacher not found' })
@@ -141,7 +128,7 @@ export class TeachersController {
   }
 
   @Post(':id/assign-subject')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('teacher:update')
   @ApiOperation({ summary: 'Assign subject to teacher' })
   @ApiResponse({
     status: 200,
@@ -162,7 +149,7 @@ export class TeachersController {
   }
 
   @Delete(':id/subjects/:subjectId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('teacher:update')
   @ApiOperation({ summary: 'Remove subject from teacher' })
   @ApiResponse({
     status: 200,
@@ -182,7 +169,7 @@ export class TeachersController {
   }
 
   @Post(':id/assign-class')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('teacher:update')
   @ApiOperation({ summary: 'Assign class to teacher' })
   @ApiResponse({
     status: 200,
@@ -203,7 +190,7 @@ export class TeachersController {
   }
 
   @Delete(':id/classes/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('teacher:update')
   @ApiOperation({ summary: 'Remove class from teacher' })
   @ApiResponse({
     status: 200,
@@ -223,7 +210,7 @@ export class TeachersController {
   }
 
   @Post(':id/subject-class-assignment')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('teacher:update')
   @ApiOperation({ summary: 'Assign teacher to teach a subject in specific class and sections' })
   @ApiResponse({
     status: 200,
@@ -243,7 +230,7 @@ export class TeachersController {
   }
 
   @Post(':id/remove-subject-class-assignment')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @RequirePermissions('teacher:update')
   @ApiOperation({ summary: 'Remove subject-class assignment from teacher' })
   @ApiResponse({
     status: 200,
@@ -263,7 +250,7 @@ export class TeachersController {
   }
 
   @Get(':id/subject-class-assignments')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL, UserRole.TEACHER, UserRole.CLASS_TEACHER)
+  @RequirePermissions('teacher:view')
   @ApiOperation({ summary: 'Get all subject-class assignments for a teacher' })
   @ApiResponse({
     status: 200,
@@ -281,13 +268,7 @@ export class TeachersController {
   }
 
   @Get(':id/schedule')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('teacher:view')
   @ApiOperation({ summary: 'Get teacher schedule' })
   @ApiResponse({
     status: 200,
@@ -306,13 +287,7 @@ export class TeachersController {
   }
 
   @Get(':id/statistics')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('teacher:view')
   @ApiOperation({ summary: 'Get teacher statistics' })
   @ApiResponse({
     status: 200,

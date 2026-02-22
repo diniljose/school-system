@@ -338,4 +338,88 @@ export class DashboardService {
       },
     };
   }
+
+  /**
+   * Get recent activities for dashboard
+   */
+  async getRecentActivities(
+    schoolId: string,
+    context?: TenantContext,
+    limit: number = 10,
+  ) {
+    const studentModel = await this.getStudentModel(context);
+    const teacherModel = await this.getTeacherModel(context);
+    const enrollmentModel = await this.getEnrollmentModel(context);
+    const eventModel = await this.getEventModel(context);
+
+    const baseFilter: any = {};
+    if (!context?.isTenantUser) {
+      baseFilter.school = new Types.ObjectId(schoolId);
+    }
+
+    const activities: any[] = [];
+
+    // Get recent student registrations
+    const recentStudents = await studentModel
+      .find({ ...baseFilter, isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('firstName lastName createdAt');
+
+    recentStudents.forEach((student) => {
+      activities.push({
+        type: 'student_registered',
+        title: 'New Student Registered',
+        description: `${student.firstName} ${student.lastName} was registered`,
+        timestamp: student['createdAt'],
+        icon: 'person_add',
+      });
+    });
+
+    // Get recent enrollments
+    const recentEnrollments = await enrollmentModel
+      .find({ ...baseFilter, isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('student', 'firstName lastName')
+      .populate('class', 'name grade');
+
+    recentEnrollments.forEach((enrollment: any) => {
+      if (enrollment.student) {
+        activities.push({
+          type: 'enrollment',
+          title: 'Student Enrolled',
+          description: `${enrollment.student?.firstName} ${enrollment.student?.lastName} enrolled in ${enrollment.class?.name || 'a class'}`,
+          timestamp: enrollment['createdAt'],
+          icon: 'school',
+        });
+      }
+    });
+
+    // Get recent events
+    const recentEvents = await eventModel
+      .find({ ...baseFilter, isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('title type createdAt');
+
+    recentEvents.forEach((event) => {
+      activities.push({
+        type: 'event_created',
+        title: 'Event Created',
+        description: `${event.title}`,
+        timestamp: event['createdAt'],
+        icon: 'event',
+      });
+    });
+
+    // Sort all activities by timestamp and limit
+    activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const limitedActivities = activities.slice(0, limit);
+
+    return {
+      success: true,
+      data: limitedActivities,
+    };
+  }
 }

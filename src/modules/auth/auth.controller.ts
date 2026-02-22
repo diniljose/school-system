@@ -31,6 +31,8 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Auth')
@@ -244,8 +246,8 @@ export class AuthController {
   // ════════════════════════════════════════════════════════════════════════════
 
   @Get('students/pending')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CLASS_TEACHER, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('student:approve')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get pending student registrations for approval' })
   @ApiQuery({ name: 'classId', required: false, description: 'Filter by class' })
@@ -264,8 +266,8 @@ export class AuthController {
   }
 
   @Post('students/:id/approve')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CLASS_TEACHER, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('student:approve')
   @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approve a pending student registration' })
@@ -281,8 +283,8 @@ export class AuthController {
   }
 
   @Post('students/:id/reject')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.CLASS_TEACHER, UserRole.PRINCIPAL, UserRole.VICE_PRINCIPAL)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('student:approve')
   @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reject a pending student registration' })

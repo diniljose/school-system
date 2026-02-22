@@ -132,6 +132,11 @@ export class EventsService {
       if (query.toDate) filter.startDate.$lte = new Date(query.toDate);
     }
 
+    // Filter for upcoming events only
+    if (query.upcoming) {
+      filter.startDate = { ...filter.startDate, $gte: new Date() };
+    }
+
     if (query.search) {
       filter.$or = [
         { title: { $regex: query.search, $options: 'i' } },

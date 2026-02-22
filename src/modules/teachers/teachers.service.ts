@@ -72,6 +72,55 @@ export class TeachersService {
     return this.classModel;
   }
 
+  /**
+   * Enrich subject assignments with populated data
+   */
+  private async enrichSubjectAssignments(
+    assignments: any[],
+    subjectModel: Model<SubjectDocument>,
+    classModel: Model<ClassDocument>,
+    context?: TenantContext,
+  ): Promise<any[]> {
+    if (!assignments || !Array.isArray(assignments)) return [];
+
+    let subjectCache = new Map();
+    let classCache = new Map();
+
+    for (const assignment of assignments) {
+      // Get subject if not cached
+      let subjectId = (assignment.subject as any)?._id || assignment.subject;
+      if (subjectId && !subjectCache.has(subjectId.toString())) {
+        try {
+          const subj = await subjectModel.findById(subjectId).select('name code');
+          subjectCache.set(subjectId.toString(), subj);
+        } catch (e) {
+          subjectCache.set(subjectId.toString(), null);
+        }
+      }
+
+      // Get class if not cached
+      let classId = (assignment.class as any)?._id || assignment.class;
+      if (classId && !classCache.has(classId.toString())) {
+        try {
+          const cls = await classModel.findById(classId).select('name grade');
+          classCache.set(classId.toString(), cls);
+        } catch (e) {
+          classCache.set(classId.toString(), null);
+        }
+      }
+
+      // Enrich the assignment
+      if (subjectCache.has(subjectId.toString())) {
+        assignment.subject = subjectCache.get(subjectId.toString());
+      }
+      if (classCache.has(classId.toString())) {
+        assignment.class = classCache.get(classId.toString());
+      }
+    }
+
+    return assignments;
+  }
+
   async create(
     createTeacherDto: CreateTeacherDto,
     schoolId: string,
@@ -221,15 +270,45 @@ export class TeachersService {
       query.school = schoolId;
     }
 
-    const teacher = await teacherModel
+    let teacher = await teacherModel
       .findOne(query)
       .populate('subjects', 'name code')
       .populate('assignedClasses', 'name grade')
       .populate('classTeacherOf', 'name grade')
-      .populate('user', '-password');
+      .populate('user', '-password')
+      .populate({
+        path: 'subjectAssignments.subject',
+        select: 'name code'
+      })
+      .populate({
+        path: 'subjectAssignments.class',
+        select: 'name grade'
+      })
+      .populate({
+        path: 'subjectAssignments.academicYear',
+        select: 'name year start end isCurrent'
+      });
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
+    }
+
+    // Fallback enrichment if populate didn't work for existing data
+    if (teacher.subjectAssignments && teacher.subjectAssignments.length > 0) {
+      const hasUnpopulated = teacher.subjectAssignments.some(
+        (a: any) => typeof a.subject === 'string' || typeof a.subject === 'object' && !a.subject.name
+      );
+      
+      if (hasUnpopulated) {
+        const subjectModel = await this.getSubjectModel(context);
+        const classModel = await this.getClassModel(context);
+        teacher.subjectAssignments = await this.enrichSubjectAssignments(
+          teacher.subjectAssignments,
+          subjectModel,
+          classModel,
+          context
+        );
+      }
     }
 
     return teacher;
@@ -617,7 +696,7 @@ export class TeachersService {
    */
   async assignSubjectToClass(
     teacherId: string,
-    dto: { subjectId: string; classId: string; sections: string[] },
+    dto: { subjectId: string; classId: string; sections: string[]; academicYearId?: string; startDate?: string },
     schoolId: string,
     context?: TenantContext,
   ): Promise<Teacher> {
@@ -673,6 +752,9 @@ export class TeachersService {
         subject: new Types.ObjectId(dto.subjectId),
         class: new Types.ObjectId(dto.classId),
         sections: allSections,
+        academicYear: dto.academicYearId ? new Types.ObjectId(dto.academicYearId) : existing.academicYear,
+        assignedDate: existing.assignedDate || new Date(),
+        startDate: dto.startDate ? new Date(dto.startDate) : existing.startDate,
       };
     } else {
       // Add new assignment
@@ -680,6 +762,9 @@ export class TeachersService {
         subject: new Types.ObjectId(dto.subjectId),
         class: new Types.ObjectId(dto.classId),
         sections: dto.sections,
+        academicYear: dto.academicYearId ? new Types.ObjectId(dto.academicYearId) : undefined,
+        assignedDate: new Date(),
+        startDate: dto.startDate ? new Date(dto.startDate) : new Date(),
       });
     }
 
@@ -758,17 +843,32 @@ export class TeachersService {
       })
       .populate({
         path: 'subjectAssignments.class',
-        select: 'name grade',
+        select: 'name grade sections',
+      })
+      .populate({
+        path: 'subjectAssignments.academicYear',
+        select: 'name start end isCurrent',
       });
 
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
     }
 
+    // Enrich assignments with populated data
+    const enrichedAssignments = (teacher.subjectAssignments || []).map((assignment: any) => ({
+      _id: assignment._id,
+      subject: assignment.subject,
+      class: assignment.class,
+      sections: assignment.sections,
+      academicYear: assignment.academicYear,
+      assignedDate: assignment.assignedDate,
+      startDate: assignment.startDate,
+    }));
+
     return {
       teacherId: teacher._id,
       teacherName: `${teacher.firstName} ${teacher.lastName}`,
-      assignments: teacher.subjectAssignments || [],
+      assignments: enrichedAssignments,
     };
   }
 

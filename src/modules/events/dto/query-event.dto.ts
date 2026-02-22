@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsNumber, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsEnum, IsNumber, Min, IsBoolean } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { EventType, EventStatus } from '../../../database/schemas/event.schema';
 
 export class QueryEventDto {
@@ -47,4 +47,10 @@ export class QueryEventDto {
   @IsNumber()
   @Min(1)
   limit?: number;
+
+  @ApiPropertyOptional({ description: 'Filter for upcoming events only' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  upcoming?: boolean;
 }

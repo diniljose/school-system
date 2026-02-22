@@ -24,20 +24,19 @@ import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { QuerySubjectDto } from './dto/query-subject.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
 
 @ApiTags('Subjects')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('subjects')
 export class SubjectsController {
   constructor(private readonly subjectsService: SubjectsService) {}
 
   @Post()
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('subject:create')
   @ApiOperation({ summary: 'Create a new subject' })
   @ApiResponse({ status: 201, description: 'Subject created successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
@@ -57,13 +56,7 @@ export class SubjectsController {
   }
 
   @Get()
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('subject:view')
   @ApiOperation({ summary: 'Get all subjects with filters and pagination' })
   @ApiQuery({ name: 'type', required: false })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
@@ -85,13 +78,7 @@ export class SubjectsController {
   }
 
   @Get(':id')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('subject:view')
   @ApiOperation({ summary: 'Get a subject by ID' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiResponse({ status: 200, description: 'Subject retrieved successfully' })
@@ -104,7 +91,7 @@ export class SubjectsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('subject:update')
   @ApiOperation({ summary: 'Update a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiResponse({ status: 200, description: 'Subject updated successfully' })
@@ -125,7 +112,7 @@ export class SubjectsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('subject:delete')
   @ApiOperation({ summary: 'Delete a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiResponse({ status: 200, description: 'Subject deleted successfully' })
@@ -138,7 +125,7 @@ export class SubjectsController {
   }
 
   @Post(':id/assign-class/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('subject:update')
   @ApiOperation({ summary: 'Assign subject to a class' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -163,7 +150,7 @@ export class SubjectsController {
   }
 
   @Delete(':id/classes/:classId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('subject:update')
   @ApiOperation({ summary: 'Remove subject from a class' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
@@ -184,7 +171,7 @@ export class SubjectsController {
   }
 
   @Post(':id/assign-teacher/:teacherId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('subject:update', 'teacher:update')
   @ApiOperation({ summary: 'Assign teacher to a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
@@ -209,7 +196,7 @@ export class SubjectsController {
   }
 
   @Delete(':id/teachers/:teacherId')
-  @Roles(UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @RequirePermissions('subject:update', 'teacher:update')
   @ApiOperation({ summary: 'Remove teacher from a subject' })
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
@@ -230,13 +217,7 @@ export class SubjectsController {
   }
 
   @Get('by-class/:classId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('subject:view')
   @ApiOperation({ summary: 'Get all subjects for a specific class' })
   @ApiParam({ name: 'classId', description: 'Class ID' })
   @ApiResponse({
@@ -248,13 +229,7 @@ export class SubjectsController {
   }
 
   @Get('by-teacher/:teacherId')
-  @Roles(
-    UserRole.PRINCIPAL,
-    UserRole.PRINCIPAL,
-    UserRole.VICE_PRINCIPAL,
-    UserRole.TEACHER,
-    UserRole.CLASS_TEACHER,
-  )
+  @RequirePermissions('subject:view')
   @ApiOperation({ summary: 'Get all subjects for a specific teacher' })
   @ApiParam({ name: 'teacherId', description: 'Teacher ID' })
   @ApiResponse({

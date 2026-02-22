@@ -27,9 +27,8 @@ import {
   AssignStudentsDto,
 } from './dto';
 import { VehicleStatus } from '../../database/schemas/transport.schema';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
 @ApiTags('Transport')
 @ApiBearerAuth()
@@ -42,8 +41,8 @@ export class TransportController {
   // ————————————————————————————————————————————————————
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:create')
   @ApiOperation({ summary: 'Create a new transport vehicle/route' })
   @ApiResponse({ status: 201, description: 'Vehicle/route created successfully' })
   async create(@Req() req: any, @Body() dto: CreateTransportDto) {
@@ -57,8 +56,8 @@ export class TransportController {
   }
 
   @Get('stats')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:view')
   @ApiOperation({ summary: 'Get transport statistics for the school' })
   async getStats(@Req() req: any) {
     return this.transportService.getStats(req.schoolId);
@@ -71,8 +70,8 @@ export class TransportController {
   }
 
   @Get('maintenance/upcoming')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:view')
   @ApiOperation({ summary: 'Get vehicles with upcoming maintenance due (next 30 days)' })
   async getUpcomingMaintenance(@Req() req: any) {
     return this.transportService.getUpcomingMaintenance(req.schoolId);
@@ -96,8 +95,8 @@ export class TransportController {
   }
 
   @Put(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:update')
   @ApiOperation({ summary: 'Update a vehicle/route' })
   @ApiParam({ name: 'id', description: 'Transport ID' })
   async update(
@@ -109,8 +108,8 @@ export class TransportController {
   }
 
   @Patch(':id/status')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:update')
   @ApiOperation({ summary: 'Update vehicle status' })
   @ApiParam({ name: 'id', description: 'Transport ID' })
   async updateStatus(
@@ -122,8 +121,8 @@ export class TransportController {
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:delete')
   @ApiOperation({ summary: 'Delete a vehicle/route' })
   @ApiParam({ name: 'id', description: 'Transport ID' })
   async remove(@Req() req: any, @Param('id') id: string) {
@@ -165,8 +164,8 @@ export class TransportController {
   // ————————————————————————————————————————————————————
 
   @Post(':id/students')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:update')
   @ApiOperation({ summary: 'Assign students to a vehicle/route' })
   @ApiParam({ name: 'id', description: 'Transport ID' })
   async assignStudents(
@@ -178,8 +177,8 @@ export class TransportController {
   }
 
   @Delete(':id/students/:studentId')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:update')
   @ApiOperation({ summary: 'Remove a student from a vehicle/route' })
   @ApiParam({ name: 'id', description: 'Transport ID' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
@@ -196,8 +195,8 @@ export class TransportController {
   // ————————————————————————————————————————————————————
 
   @Post(':id/maintenance')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.PLATFORM_ADMIN, UserRole.PRINCIPAL, UserRole.PRINCIPAL)
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('transport:update')
   @ApiOperation({ summary: 'Add a maintenance record to a vehicle' })
   @ApiParam({ name: 'id', description: 'Transport ID' })
   async addMaintenance(
