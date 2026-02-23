@@ -4,6 +4,12 @@
  * Fixed: double password hashing, console.log removal, forgot/reset password implementation
  * Updated: Multi-tenant support - school users are in tenant databases
  */
+/**
+ * Auth Service
+ * Handles authentication, registration, password management
+ * Fixed: double password hashing, console.log removal, forgot/reset password implementation
+ * Updated: Multi-tenant support - school users are in tenant databases
+ */
 import {
   Injectable,
   UnauthorizedException,
@@ -1370,4 +1376,3 @@ export class AuthService {
     }
   }
 }
-

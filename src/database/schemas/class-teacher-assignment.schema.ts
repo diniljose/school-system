@@ -22,6 +22,9 @@ export class ClassTeacherAssignment {
   @Prop({ type: Types.ObjectId, ref: 'AcademicYear', required: true })
   academicYear: Types.ObjectId;
 
+  @Prop()
+  section?: string; // Section name (A, B, C etc.)
+
   @Prop({ default: true })
   isClassTeacher: boolean; // true = class teacher with full admin rights for this class
 
@@ -40,11 +43,14 @@ export class ClassTeacherAssignment {
 
 export const ClassTeacherAssignmentSchema = SchemaFactory.createForClass(ClassTeacherAssignment);
 
-// Unique constraint: A teacher can only have one assignment per class per academic year
+// Unique constraint: A teacher can only have one assignment per class+section per academic year
 ClassTeacherAssignmentSchema.index(
-  { teacher: 1, class: 1, academicYear: 1 },
+  { teacher: 1, class: 1, section: 1, academicYear: 1 },
   { unique: true },
 );
+
+// Index for finding class teacher by class+section+academic year
+ClassTeacherAssignmentSchema.index({ class: 1, section: 1, academicYear: 1, isClassTeacher: 1 });
 
 // Index for quick lookups
 ClassTeacherAssignmentSchema.index({ teacher: 1, isActive: 1 });

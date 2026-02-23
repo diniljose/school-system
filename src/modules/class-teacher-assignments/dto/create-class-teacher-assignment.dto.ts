@@ -17,6 +17,11 @@ export class CreateClassTeacherAssignmentDto {
   @IsMongoId()
   academicYear: string;
 
+  @ApiPropertyOptional({ description: 'Section name (A, B, C, etc.)' })
+  @IsOptional()
+  @IsString()
+  section?: string;
+
   @ApiPropertyOptional({
     description: 'Is this teacher the class teacher (homeroom teacher)?',
     default: false,

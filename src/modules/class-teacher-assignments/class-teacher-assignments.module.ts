@@ -13,6 +13,7 @@ import {
 import { TeachersModule } from '../teachers/teachers.module';
 import { ClassesModule } from '../classes/classes.module';
 import { AcademicYearsModule } from '../academic-years/academic-years.module';
+import { DatabaseModule } from '../../database/database/database.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AcademicYearsModule } from '../academic-years/academic-years.module';
     forwardRef(() => TeachersModule),
     forwardRef(() => ClassesModule),
     forwardRef(() => AcademicYearsModule),
+    DatabaseModule,
   ],
   controllers: [ClassTeacherAssignmentsController],
   providers: [ClassTeacherAssignmentsService],

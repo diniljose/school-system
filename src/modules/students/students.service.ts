@@ -135,12 +135,12 @@ export class StudentsService {
 
     return {
       data: students,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit),
-      },
+      items: students,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      pages: Math.ceil(total / limit),
     };
   }
 

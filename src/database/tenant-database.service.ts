@@ -23,9 +23,10 @@ import { TimetableSchema } from './schemas/timetable.schema';
 import { NotificationSchema } from './schemas/notification.schema';
 import { AcademicYearSchema } from './schemas/academic-year.schema';
 import { SettingsSchema } from './schemas/settings.schema';
-import { RoleSchema } from './schemas/role.schema';
+import { RoleSchema, DEFAULT_SCHOOL_ROLES } from './schemas/role.schema';
 import { EnrollmentSchema } from './schemas/enrollment.schema';
 import { EventSchema } from './schemas/event.schema';
+import { ClassTeacherAssignmentSchema } from './schemas/class-teacher-assignment.schema';
 
 // Schema registry for tenant databases
 const TENANT_SCHEMAS: Record<string, Schema> = {
@@ -46,6 +47,7 @@ const TENANT_SCHEMAS: Record<string, Schema> = {
   Role: RoleSchema,
   Enrollment: EnrollmentSchema,
   SchoolEvent: EventSchema,
+  ClassTeacherAssignment: ClassTeacherAssignmentSchema,
 };
 
 @Injectable()
@@ -112,10 +114,40 @@ export class TenantDatabaseService implements OnModuleDestroy {
       }
     }
     
+    // Initialize default roles for the school
+    await this.initializeDefaultRoles(connection, schoolCode);
+    
     this.logger.log(
       `School database initialized with schemas for: ${this.getDatabaseName(schoolCode)}`,
     );
     return connection;
+  }
+
+  /**
+   * Initialize default roles in a school's tenant database
+   */
+  private async initializeDefaultRoles(connection: Connection, schoolCode: string): Promise<void> {
+    try {
+      const RoleModel = connection.models['Role'];
+      if (!RoleModel) {
+        this.logger.warn(`Role model not registered for school ${schoolCode}`);
+        return;
+      }
+
+      // Check if roles already exist
+      const existingRoles = await RoleModel.countDocuments().exec();
+      if (existingRoles > 0) {
+        this.logger.debug(`Roles already exist for school ${schoolCode}, skipping initialization`);
+        return;
+      }
+
+      // Insert default roles
+      await RoleModel.insertMany(DEFAULT_SCHOOL_ROLES);
+      this.logger.log(`Initialized ${DEFAULT_SCHOOL_ROLES.length} default roles for school ${schoolCode}`);
+    } catch (error) {
+      this.logger.error(`Failed to initialize default roles for ${schoolCode}: ${error.message}`);
+      // Don't throw - role initialization failure shouldn't block school creation
+    }
   }
 
   /**
@@ -152,6 +184,9 @@ export class TenantDatabaseService implements OnModuleDestroy {
   }): Promise<any> {
     const UserModel = await this.getTenantModel<any>(schoolCode, 'User');
     
+    // Get permissions from the role
+    const permissions = await this.getRolePermissions(schoolCode, userData.role);
+    
     const user = new UserModel({
       firstName: userData.firstName,
       lastName: userData.lastName,
@@ -159,11 +194,12 @@ export class TenantDatabaseService implements OnModuleDestroy {
       password: userData.passwordHash,
       role: userData.role,
       phone: userData.phone,
+      permissions: permissions,
       isActive: true,
     });
     
     await user.save();
-    this.logger.log(`Created user ${userData.email} in school database: ${this.getDatabaseName(schoolCode)}`);
+    this.logger.log(`Created user ${userData.email} in school database: ${this.getDatabaseName(schoolCode)} with ${permissions.length} permissions`);
     return user;
   }
 

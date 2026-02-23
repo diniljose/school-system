@@ -1,6 +1,7 @@
 /**
  * Class Teacher Assignments Controller
  * API endpoints for managing teacher-class assignments
+ * Updated to support multi-tenant database architecture
  */
 import {
   Controller,
@@ -13,6 +14,7 @@ import {
   Query,
   UseGuards,
   Request,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,7 +23,8 @@ import {
   ApiResponse,
   ApiQuery,
 } from '@nestjs/swagger';
-import { ClassTeacherAssignmentsService } from './class-teacher-assignments.service';
+import { Request as ExpressRequest } from 'express';
+import { ClassTeacherAssignmentsService, TenantContext } from './class-teacher-assignments.service';
 import { CreateClassTeacherAssignmentDto } from './dto/create-class-teacher-assignment.dto';
 import { UpdateClassTeacherAssignmentDto } from './dto/update-class-teacher-assignment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -37,11 +40,23 @@ export class ClassTeacherAssignmentsController {
     private readonly assignmentsService: ClassTeacherAssignmentsService,
   ) {}
 
+  /**
+   * Helper to extract tenant context from request
+   */
+  private getTenantContext(req: any): TenantContext {
+    return {
+      schoolCode: req.user?.schoolCode,
+      isTenantUser: req.user?.isTenantUser,
+      schoolId: req.user?.school,
+    };
+  }
+
   @Get()
   @RequirePermissions('class-assignment:view')
   @ApiOperation({ summary: 'Get all class teacher assignments' })
   @ApiQuery({ name: 'teacher', required: false })
   @ApiQuery({ name: 'class', required: false })
+  @ApiQuery({ name: 'section', required: false })
   @ApiQuery({ name: 'academicYear', required: false })
   @ApiQuery({ name: 'isClassTeacher', required: false, type: Boolean })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
@@ -49,17 +64,20 @@ export class ClassTeacherAssignmentsController {
   async findAll(
     @Query('teacher') teacher?: string,
     @Query('class') classId?: string,
+    @Query('section') section?: string,
     @Query('academicYear') academicYear?: string,
     @Query('isClassTeacher') isClassTeacher?: boolean,
     @Query('isActive') isActive?: boolean,
+    @Req() req?: ExpressRequest,
   ) {
     return this.assignmentsService.findAll({
       teacher,
       class: classId,
+      section,
       academicYear,
       isClassTeacher,
       isActive,
-    });
+    }, this.getTenantContext(req));
   }
 
   @Get('my-classes')
@@ -79,6 +97,7 @@ export class ClassTeacherAssignmentsController {
       teacherId,
       academicYear,
       classTeacherOnly === true,
+      this.getTenantContext(req),
     );
   }
 
@@ -87,8 +106,8 @@ export class ClassTeacherAssignmentsController {
   @ApiOperation({ summary: 'Get assignment by ID' })
   @ApiResponse({ status: 200, description: 'Assignment details' })
   @ApiResponse({ status: 404, description: 'Assignment not found' })
-  async findById(@Param('id') id: string) {
-    return this.assignmentsService.findById(id);
+  async findById(@Param('id') id: string, @Req() req: ExpressRequest) {
+    return this.assignmentsService.findById(id, this.getTenantContext(req));
   }
 
   @Post()
@@ -100,7 +119,7 @@ export class ClassTeacherAssignmentsController {
     @Body() createDto: CreateClassTeacherAssignmentDto,
     @Request() req,
   ) {
-    return this.assignmentsService.create(createDto, req.user.id);
+    return this.assignmentsService.create(createDto, req.user.id, this.getTenantContext(req));
   }
 
   @Patch(':id')
@@ -111,8 +130,9 @@ export class ClassTeacherAssignmentsController {
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateClassTeacherAssignmentDto,
+    @Req() req: ExpressRequest,
   ) {
-    return this.assignmentsService.update(id, updateDto);
+    return this.assignmentsService.update(id, updateDto, this.getTenantContext(req));
   }
 
   @Delete(':id')
@@ -120,8 +140,8 @@ export class ClassTeacherAssignmentsController {
   @ApiOperation({ summary: 'Remove an assignment' })
   @ApiResponse({ status: 200, description: 'Assignment removed' })
   @ApiResponse({ status: 404, description: 'Assignment not found' })
-  async remove(@Param('id') id: string) {
-    await this.assignmentsService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: ExpressRequest) {
+    await this.assignmentsService.remove(id, this.getTenantContext(req));
     return { message: 'Assignment removed successfully' };
   }
 
@@ -129,12 +149,15 @@ export class ClassTeacherAssignmentsController {
   @RequirePermissions('class-assignment:view')
   @ApiOperation({ summary: 'Get the class teacher for a specific class' })
   @ApiQuery({ name: 'academicYear', required: true })
+  @ApiQuery({ name: 'section', required: false })
   @ApiResponse({ status: 200, description: 'Class teacher details' })
   async getClassTeacher(
     @Param('classId') classId: string,
     @Query('academicYear') academicYear: string,
+    @Query('section') section?: string,
+    @Req() req?: ExpressRequest,
   ) {
-    return this.assignmentsService.getClassTeacher(classId, academicYear);
+    return this.assignmentsService.getClassTeacher(classId, academicYear, section, this.getTenantContext(req));
   }
 
   @Get('check-access/:teacherId/:classId')
@@ -146,16 +169,20 @@ export class ClassTeacherAssignmentsController {
     @Param('teacherId') teacherId: string,
     @Param('classId') classId: string,
     @Query('academicYear') academicYear?: string,
+    @Req() req?: ExpressRequest,
   ) {
+    const context = this.getTenantContext(req);
     const hasAccess = await this.assignmentsService.hasClassAccess(
       teacherId,
       classId,
       academicYear,
+      context,
     );
     const isClassTeacher = await this.assignmentsService.isClassTeacher(
       teacherId,
       classId,
       academicYear,
+      context,
     );
     return { hasAccess, isClassTeacher };
   }

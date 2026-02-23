@@ -96,10 +96,13 @@ export class AttendanceService {
 
     this.logger.debug(`Querying class with ID: ${classId}, School: ${schoolId}, Context: ${JSON.stringify(context)}`);
 
-    const classDoc = await classModel.findOne({
-      _id: new Types.ObjectId(classId),
-      school: new Types.ObjectId(schoolId),
-    });
+    // Build class query - don't filter by school for tenant users (tenant DB is already school-specific)
+    const classQuery: any = { _id: new Types.ObjectId(classId) };
+    if (!context?.isTenantUser) {
+      classQuery.school = new Types.ObjectId(schoolId);
+    }
+
+    const classDoc = await classModel.findOne(classQuery);
 
     if (!classDoc) {
       this.logger.error(`Class not found for ID: ${classId}, School: ${schoolId}`);
@@ -117,11 +120,14 @@ export class AttendanceService {
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
 
+    // Build attendance filter - don't filter by school for tenant users
     const filter: any = {
-      school: new Types.ObjectId(schoolId),
       class: new Types.ObjectId(classId),
       date: attendanceDate,
     };
+    if (!context?.isTenantUser) {
+      filter.school = new Types.ObjectId(schoolId);
+    }
     if (section) {
       filter.section = section;
     }
@@ -140,10 +146,12 @@ export class AttendanceService {
       remarks: record.remarks || record.note || '',
     }));
 
-    const currentAcademicYear = await academicYearModel.findOne({
-      school: schoolId,
-      isCurrent: true,
-    });
+    // Build academic year query - don't filter by school for tenant users
+    const academicYearQuery: any = { isCurrent: true };
+    if (!context?.isTenantUser) {
+      academicYearQuery.school = schoolId;
+    }
+    const currentAcademicYear = await academicYearModel.findOne(academicYearQuery);
 
     this.logger.debug(`Academic year query - School: ${schoolId}, Result: ${currentAcademicYear ? 'FOUND' : 'NOT FOUND'}, Context: ${JSON.stringify(context)}`);
 
@@ -151,8 +159,7 @@ export class AttendanceService {
       throw new NotFoundException('No current academic year found for this school');
     }
 
-    const attendanceData = {
-      school: new Types.ObjectId(schoolId),
+    const attendanceData: any = {
       academicYear: currentAcademicYear._id,
       class: new Types.ObjectId(classId),
       section: section || 'A',
@@ -162,6 +169,9 @@ export class AttendanceService {
       ...(subjectId && { subject: new Types.ObjectId(subjectId) }),
       ...(period != null && { period: typeof period === 'number' ? period : parseInt(period, 10) }),
     };
+    if (!context?.isTenantUser) {
+      attendanceData.school = new Types.ObjectId(schoolId);
+    }
 
     if (existingAttendance) {
       Object.assign(existingAttendance, attendanceData);
@@ -198,15 +208,17 @@ export class AttendanceService {
     const attendanceModel = await this.getAttendanceModel(context);
     const academicYearModel = await this.getAcademicYearModel(context);
 
+    // Build queries - don't filter by school for tenant users
+    const studentQuery: any = { _id: new Types.ObjectId(studentId) };
+    const classQuery: any = { _id: new Types.ObjectId(classId) };
+    if (!context?.isTenantUser) {
+      studentQuery.school = new Types.ObjectId(schoolId);
+      classQuery.school = new Types.ObjectId(schoolId);
+    }
+
     const [student, classDoc] = await Promise.all([
-      studentModel.findOne({
-        _id: new Types.ObjectId(studentId),
-        school: new Types.ObjectId(schoolId),
-      }),
-      classModel.findOne({
-        _id: new Types.ObjectId(classId),
-        school: new Types.ObjectId(schoolId),
-      }),
+      studentModel.findOne(studentQuery),
+      classModel.findOne(classQuery),
     ]);
 
     if (!student) {
@@ -220,12 +232,15 @@ export class AttendanceService {
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
 
+    // Build attendance filter - don't filter by school for tenant users
     const filter: any = {
-      school: new Types.ObjectId(schoolId),
       class: new Types.ObjectId(classId),
       section,
       date: attendanceDate,
     };
+    if (!context?.isTenantUser) {
+      filter.school = new Types.ObjectId(schoolId);
+    }
 
     if (subjectId) {
       filter.subject = new Types.ObjectId(subjectId);
@@ -255,17 +270,18 @@ export class AttendanceService {
       attendance.markedBy = new Types.ObjectId(userId);
       await attendance.save();
     } else {
-      const currentAcademicYear = await academicYearModel.findOne({
-        school: new Types.ObjectId(schoolId),
-        isCurrent: true,
-      });
+      // Build academic year query - don't filter by school for tenant users
+      const academicYearQuery: any = { isCurrent: true };
+      if (!context?.isTenantUser) {
+        academicYearQuery.school = new Types.ObjectId(schoolId);
+      }
+      const currentAcademicYear = await academicYearModel.findOne(academicYearQuery);
 
       if (!currentAcademicYear) {
         throw new NotFoundException('No current academic year found for this school');
       }
 
-      attendance = new attendanceModel({
-        school: new Types.ObjectId(schoolId),
+      const attendanceData: any = {
         academicYear: currentAcademicYear._id,
         class: new Types.ObjectId(classId),
         section,
@@ -274,7 +290,12 @@ export class AttendanceService {
         markedBy: new Types.ObjectId(userId),
         ...(subjectId && { subject: new Types.ObjectId(subjectId) }),
         ...(period != null && { period: typeof period === 'number' ? period : parseInt(period, 10) }),
-      });
+      };
+      if (!context?.isTenantUser) {
+        attendanceData.school = new Types.ObjectId(schoolId);
+      }
+
+      attendance = new attendanceModel(attendanceData);
       await attendance.save();
     }
 

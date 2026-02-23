@@ -6,7 +6,7 @@ export type AttendanceDocument = Attendance & Document;
 
 @Schema({ timestamps: true })
 export class Attendance {
-  @Prop({ type: Types.ObjectId, ref: 'School', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'School' })
   school: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'AcademicYear', required: true })
@@ -42,8 +42,13 @@ export class Attendance {
 
 export const AttendanceSchema = SchemaFactory.createForClass(Attendance);
 
-// Unique index to prevent duplicate attendance for same class/section/date
+// Create two unique indexes - one for multi-tenant (with school), one for single-tenant (without school)
+// This allows both deployment modes to work correctly
 AttendanceSchema.index(
   { school: 1, class: 1, section: 1, date: 1, subject: 1 },
-  { unique: true },
+  { unique: true, sparse: true }, // sparse: true allows null values
+);
+AttendanceSchema.index(
+  { class: 1, section: 1, date: 1, subject: 1 },
+  { unique: true, sparse: true },
 );
