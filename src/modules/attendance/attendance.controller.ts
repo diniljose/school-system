@@ -39,11 +39,15 @@ export class AttendanceController {
   @ApiQuery({ name: 'classId', required: false, type: String })
   @ApiQuery({ name: 'date', required: false, type: String })
   @ApiQuery({ name: 'section', required: false, type: String })
+  @ApiQuery({ name: 'fromDate', required: false, type: String, description: 'Start date for range' })
+  @ApiQuery({ name: 'toDate', required: false, type: String, description: 'End date for range' })
   @ApiQuery({ name: 'studentId', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Attendance records retrieved' })
   async getAttendance(
     @Query('classId') classId?: string,
     @Query('date') date?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
     @Query('section') section?: string,
     @Query('studentId') studentId?: string,
     @Req() req?: Request,
@@ -58,7 +62,11 @@ export class AttendanceController {
     }
     // For class attendance, at least classId is needed
     if (classId) {
-      // If date is not provided, use today's date
+      // If fromDate and toDate provided, use optimized range query (single DB call)
+      if (fromDate && toDate) {
+        return this.attendanceService.getClassAttendanceRange(classId, section || null, fromDate, toDate, tenantContext);
+      }
+      // Single date query
       const attendanceDate = date ? date : new Date().toISOString().split('T')[0];
       return this.attendanceService.getClassAttendance(classId, section || null, attendanceDate, tenantContext);
     }

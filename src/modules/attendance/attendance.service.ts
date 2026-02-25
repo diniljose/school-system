@@ -453,6 +453,76 @@ export class AttendanceService {
     return { success: true, data: populatedAttendance };
   }
 
+  async getClassAttendanceRange(
+    classId: string,
+    section: string | null,
+    fromDate: string,
+    toDate: string,
+    context?: TenantContext,
+  ) {
+    const classModel = await this.getClassModel(context);
+    const attendanceModel = await this.getAttendanceModel(context);
+    const studentModel = await this.getStudentModel(context);
+
+    const classExists = await classModel.findById(new Types.ObjectId(classId));
+    if (!classExists) {
+      throw new NotFoundException('Class not found');
+    }
+
+    const startDateObj = new Date(fromDate);
+    startDateObj.setHours(0, 0, 0, 0);
+    const endDateObj = new Date(toDate);
+    endDateObj.setHours(23, 59, 59, 999);
+
+    const filter: any = {
+      class: new Types.ObjectId(classId),
+      date: { $gte: startDateObj, $lte: endDateObj },
+    };
+    if (section) {
+      filter.section = section;
+    }
+
+    const attendance = await attendanceModel
+      .find(filter)
+      .populate('subject', 'name code')
+      .sort({ date: 1 })
+      .lean()
+      .exec();
+
+    if (!attendance || attendance.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    const studentIds = new Set<string>();
+    attendance.forEach((att: any) => {
+      if (att.records && Array.isArray(att.records)) {
+        att.records.forEach((rec: any) => {
+          if (rec.student) {
+            studentIds.add(rec.student.toString());
+          }
+        });
+      }
+    });
+
+    const students = await studentModel
+      .find({ _id: { $in: Array.from(studentIds).map(id => new Types.ObjectId(id)) } })
+      .select('firstName lastName rollNumber admissionNumber')
+      .lean()
+      .exec();
+
+    const studentMap = new Map(students.map((s: any) => [s._id.toString(), s]));
+
+    const populatedAttendance = attendance.map((att: any) => ({
+      ...att,
+      records: (att.records || []).map((rec: any) => ({
+        ...rec,
+        student: studentMap.get(rec.student?.toString()) || rec.student,
+      })),
+    }));
+
+    return { success: true, data: populatedAttendance };
+  }
+
   async getAttendanceStatistics(
     studentId: string,
     startDate?: string,
