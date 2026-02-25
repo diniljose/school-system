@@ -392,6 +392,7 @@ export class AttendanceService {
     // Get the correct model based on tenant context
     const classModel = await this.getClassModel(context);
     const attendanceModel = await this.getAttendanceModel(context);
+    const studentModel = await this.getStudentModel(context);
 
     // Validate that class exists
     const classExists = await classModel.findById(new Types.ObjectId(classId));
@@ -413,17 +414,43 @@ export class AttendanceService {
     const attendance = await attendanceModel
       .find(filter)
       .populate('subject', 'name code')
-      .populate({
-        path: 'records.student',
-        select: 'firstName lastName rollNumber admissionNumber',
-      })
+      .lean()
       .exec();
 
     if (!attendance || attendance.length === 0) {
       return { success: true, data: [] };
     }
 
-    return { success: true, data: attendance };
+    // Manually populate student data for tenant databases
+    const studentIds = new Set<string>();
+    attendance.forEach((att: any) => {
+      if (att.records && Array.isArray(att.records)) {
+        att.records.forEach((rec: any) => {
+          if (rec.student) {
+            studentIds.add(rec.student.toString());
+          }
+        });
+      }
+    });
+
+    const students = await studentModel
+      .find({ _id: { $in: Array.from(studentIds).map(id => new Types.ObjectId(id)) } })
+      .select('firstName lastName rollNumber admissionNumber')
+      .lean()
+      .exec();
+
+    const studentMap = new Map(students.map((s: any) => [s._id.toString(), s]));
+
+    // Populate student refs in attendance records
+    const populatedAttendance = attendance.map((att: any) => ({
+      ...att,
+      records: (att.records || []).map((rec: any) => ({
+        ...rec,
+        student: studentMap.get(rec.student?.toString()) || rec.student,
+      })),
+    }));
+
+    return { success: true, data: populatedAttendance };
   }
 
   async getAttendanceStatistics(

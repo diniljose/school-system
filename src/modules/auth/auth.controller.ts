@@ -23,6 +23,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { RegisterStudentDto } from './dto/register-student.dto';
+import { RegisterTeacherDto } from './dto/register-teacher.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -91,6 +92,20 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid school code or class ID' })
   async registerStudent(@Body() registerStudentDto: RegisterStudentDto) {
     return this.authService.registerStudent(registerStudentDto);
+  }
+
+  @Post('register-teacher')
+  @Public()
+  @ApiOperation({
+    summary: 'Teacher self-registration',
+    description:
+      'Teachers can self-register by selecting a school. ' +
+      'Registration requires principal approval before teacher can login.',
+  })
+  @ApiResponse({ status: 201, description: 'Teacher registration submitted for approval' })
+  @ApiResponse({ status: 400, description: 'Invalid school code' })
+  async registerTeacher(@Body() registerTeacherDto: RegisterTeacherDto) {
+    return this.authService.registerTeacher(registerTeacherDto);
   }
 
   @Post('refresh-token')
@@ -241,6 +256,15 @@ export class AuthController {
     return this.authService.getPublicSchoolClasses(code);
   }
 
+  @Get('public/schools/:code/academic-years')
+  @Public()
+  @ApiOperation({ summary: 'Get academic years for a school (for student registration)' })
+  @ApiParam({ name: 'code', description: 'School code' })
+  @ApiResponse({ status: 200, description: 'List of academic years' })
+  async getPublicSchoolAcademicYears(@Param('code') code: string) {
+    return this.authService.getPublicSchoolAcademicYears(code);
+  }
+
   // ════════════════════════════════════════════════════════════════════════════
   // STUDENT APPROVAL WORKFLOW (Class Teacher / Principal)
   // ════════════════════════════════════════════════════════════════════════════
@@ -296,6 +320,62 @@ export class AuthController {
     @Request() req,
   ) {
     return this.authService.rejectStudent(
+      id,
+      req.user.school,
+      req.user.schoolCode,
+      req.user.id,
+      reason,
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // TEACHER APPROVAL WORKFLOW (Principal only)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  @Get('teachers/pending')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('teacher:approve')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get pending teacher registrations for approval' })
+  @ApiResponse({ status: 200, description: 'List of pending teacher registrations' })
+  async getPendingTeachers(@Request() req) {
+    return this.authService.getPendingTeachers(
+      req.user.school,
+      req.user.schoolCode,
+    );
+  }
+
+  @Post('teachers/:id/approve')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('teacher:approve')
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve a pending teacher registration' })
+  @ApiParam({ name: 'id', description: 'Teacher ID to approve' })
+  @ApiResponse({ status: 200, description: 'Teacher approved, user account created' })
+  async approveTeacher(@Param('id') id: string, @Request() req) {
+    return this.authService.approveTeacher(
+      id,
+      req.user.school,
+      req.user.schoolCode,
+      req.user.id,
+    );
+  }
+
+  @Post('teachers/:id/reject')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('teacher:approve')
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject a pending teacher registration' })
+  @ApiParam({ name: 'id', description: 'Teacher ID to reject' })
+  @ApiResponse({ status: 200, description: 'Teacher registration rejected' })
+  async rejectTeacher(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @Request() req,
+  ) {
+    return this.authService.rejectTeacher(
       id,
       req.user.school,
       req.user.schoolCode,

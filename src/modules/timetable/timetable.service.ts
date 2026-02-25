@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -28,9 +29,18 @@ import { CreateTimetableDto } from './dto/create-timetable.dto';
 import { UpdateTimetableDto } from './dto/update-timetable.dto';
 import { AddPeriodDto } from './dto/add-period.dto';
 import { QueryTimetableDto } from './dto/query-timetable.dto';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
+
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class TimetableService {
+  private readonly logger = new Logger(TimetableService.name);
+
   constructor(
     @InjectModel(Timetable.name)
     private timetableModel: Model<TimetableDocument>,
@@ -39,39 +49,105 @@ export class TimetableService {
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
     @InjectModel(AcademicYear.name)
     private academicYearModel: Model<AcademicYearDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  // Helper methods to get tenant-aware models
+  private async getTimetableModel(context?: TenantContext): Promise<Model<TimetableDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<TimetableDocument>(
+        context.schoolCode,
+        'Timetable',
+      );
+    }
+    return this.timetableModel;
+  }
+
+  private async getClassModel(context?: TenantContext): Promise<Model<ClassDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ClassDocument>(
+        context.schoolCode,
+        'Class',
+      );
+    }
+    return this.classModel;
+  }
+
+  private async getTeacherModel(context?: TenantContext): Promise<Model<TeacherDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<TeacherDocument>(
+        context.schoolCode,
+        'Teacher',
+      );
+    }
+    return this.teacherModel;
+  }
+
+  private async getSubjectModel(context?: TenantContext): Promise<Model<SubjectDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<SubjectDocument>(
+        context.schoolCode,
+        'Subject',
+      );
+    }
+    return this.subjectModel;
+  }
+
+  private async getAcademicYearModel(context?: TenantContext): Promise<Model<AcademicYearDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<AcademicYearDocument>(
+        context.schoolCode,
+        'AcademicYear',
+      );
+    }
+    return this.academicYearModel;
+  }
 
   async create(
     createTimetableDto: CreateTimetableDto,
     schoolId: string,
     createdBy: string,
+    context?: TenantContext,
   ) {
     try {
-      const classExists = await this.classModel.findOne({
-        _id: new Types.ObjectId(createTimetableDto.class),
-        school: new Types.ObjectId(schoolId),
-      });
+      const classModel = await this.getClassModel(context);
+      const academicYearModel = await this.getAcademicYearModel(context);
+      const timetableModel = await this.getTimetableModel(context);
+
+      // For tenant users, don't filter by school (tenant DB is school-specific)
+      const classQuery: any = { _id: new Types.ObjectId(createTimetableDto.class) };
+      if (!context?.isTenantUser) {
+        classQuery.school = new Types.ObjectId(schoolId);
+      }
+      
+      const classExists = await classModel.findOne(classQuery);
 
       if (!classExists) {
         throw new NotFoundException('Class not found');
       }
 
-      const academicYearExists = await this.academicYearModel.findOne({
-        _id: new Types.ObjectId(createTimetableDto.academicYear),
-        school: new Types.ObjectId(schoolId),
-      });
+      const academicYearQuery: any = { _id: new Types.ObjectId(createTimetableDto.academicYear) };
+      if (!context?.isTenantUser) {
+        academicYearQuery.school = new Types.ObjectId(schoolId);
+      }
+
+      const academicYearExists = await academicYearModel.findOne(academicYearQuery);
 
       if (!academicYearExists) {
         throw new NotFoundException('Academic year not found');
       }
 
-      const existingTimetable = await this.timetableModel.findOne({
-        school: new Types.ObjectId(schoolId),
+      const existingFilter: any = {
         class: new Types.ObjectId(createTimetableDto.class),
         section: createTimetableDto.section,
         academicYear: new Types.ObjectId(createTimetableDto.academicYear),
         isActive: true,
-      });
+      };
+      if (!context?.isTenantUser) {
+        existingFilter.school = new Types.ObjectId(schoolId);
+      }
+
+      const existingTimetable = await timetableModel.findOne(existingFilter);
 
       if (existingTimetable) {
         throw new ConflictException(
@@ -96,7 +172,7 @@ export class TimetableService {
         notes: period.notes,
       }));
 
-      const timetableData = {
+      const timetableData: any = {
         ...createTimetableDto,
         school: new Types.ObjectId(schoolId),
         class: new Types.ObjectId(createTimetableDto.class),
@@ -105,7 +181,7 @@ export class TimetableService {
         createdBy: new Types.ObjectId(createdBy),
       };
 
-      const newTimetable = new this.timetableModel(timetableData);
+      const newTimetable = new timetableModel(timetableData);
       await newTimetable.save();
 
       return newTimetable;
@@ -122,7 +198,7 @@ export class TimetableService {
     }
   }
 
-  async findAll(schoolId: string, query: QueryTimetableDto) {
+  async findAll(schoolId: string, query: QueryTimetableDto, context?: TenantContext) {
     const {
       academicYearId,
       classId,
@@ -134,7 +210,14 @@ export class TimetableService {
     } = query;
     const skip = (page - 1) * limit;
 
-    const filter: any = { school: new Types.ObjectId(schoolId) };
+    const timetableModel = await this.getTimetableModel(context);
+    
+    const filter: any = {};
+    
+    // Only filter by school for non-tenant users
+    if (!context?.isTenantUser) {
+      filter.school = new Types.ObjectId(schoolId);
+    }
 
     if (academicYearId) {
       filter.academicYear = new Types.ObjectId(academicYearId);
@@ -160,7 +243,7 @@ export class TimetableService {
     }
 
     const [timetables, total] = await Promise.all([
-      this.timetableModel
+      timetableModel
         .find(filter)
         .populate('class', 'name grade')
         .populate('academicYear', 'name startDate endDate')
@@ -170,7 +253,7 @@ export class TimetableService {
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.timetableModel.countDocuments(filter),
+      timetableModel.countDocuments(filter),
     ]);
 
     return {

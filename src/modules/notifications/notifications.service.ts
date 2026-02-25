@@ -16,6 +16,13 @@ import { Class, ClassDocument } from '../../database/schemas/class.schema';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { QueryNotificationDto } from './dto/query-notification.dto';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
+
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class NotificationsService {
@@ -24,17 +31,62 @@ export class NotificationsService {
     private notificationModel: Model<NotificationDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  // Helper methods to get tenant-aware models
+  private async getNotificationModel(
+    context?: TenantContext,
+  ): Promise<Model<NotificationDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<NotificationDocument>(
+        context.schoolCode,
+        'Notification',
+      );
+    }
+    return this.notificationModel;
+  }
+
+  private async getUserModel(
+    context?: TenantContext,
+  ): Promise<Model<UserDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<UserDocument>(
+        context.schoolCode,
+        'User',
+      );
+    }
+    return this.userModel;
+  }
+
+  private async getClassModel(
+    context?: TenantContext,
+  ): Promise<Model<ClassDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ClassDocument>(
+        context.schoolCode,
+        'Class',
+      );
+    }
+    return this.classModel;
+  }
 
   async create(
     createDto: CreateNotificationDto,
     schoolId: string,
     senderId: string,
+    context?: TenantContext,
   ) {
-    const sender = await this.userModel.findOne({
-      _id: new Types.ObjectId(senderId),
-      school: new Types.ObjectId(schoolId),
-    });
+    const userModel = await this.getUserModel(context);
+    const classModel = await this.getClassModel(context);
+    const notificationModel = await this.getNotificationModel(context);
+
+    // For tenant users, just verify sender exists (no school filter needed in tenant DB)
+    const senderQuery: any = { _id: new Types.ObjectId(senderId) };
+    if (!context?.isTenantUser) {
+      senderQuery.school = new Types.ObjectId(schoolId);
+    }
+    const sender = await userModel.findOne(senderQuery);
 
     if (!sender) {
       throw new NotFoundException('Sender not found');
@@ -45,20 +97,23 @@ export class NotificationsService {
       createDto.targetClasses
     ) {
       for (const classId of createDto.targetClasses) {
-        const classDoc = await this.classModel.findOne({
-          _id: new Types.ObjectId(classId),
-          school: new Types.ObjectId(schoolId),
-        });
+        const classQuery: any = { _id: new Types.ObjectId(classId) };
+        if (!context?.isTenantUser) {
+          classQuery.school = new Types.ObjectId(schoolId);
+        }
+        const classDoc = await classModel.findOne(classQuery);
         if (!classDoc) {
           throw new NotFoundException(`Class ${classId} not found`);
         }
       }
     }
 
-    const recipientModel = this.getRecipientModel(createDto.recipientType);
+    const recipientModel = this.getRecipientModel(createDto.recipientType || RecipientType.ALL);
 
-    const notification = new this.notificationModel({
+    const notificationData: any = {
       ...createDto,
+      type: createDto.type || 'general',
+      recipientType: createDto.recipientType || RecipientType.ALL,
       school: new Types.ObjectId(schoolId),
       sender: new Types.ObjectId(senderId),
       recipientModel,
@@ -83,7 +138,9 @@ export class NotificationsService {
               : undefined,
           }
         : undefined,
-    });
+    };
+
+    const notification = new notificationModel(notificationData);
 
     await notification.save();
     return notification;
@@ -225,11 +282,15 @@ export class NotificationsService {
     schoolId: string,
     filters: QueryNotificationDto,
     pagination: { page?: number; limit?: number },
+    context?: TenantContext,
   ) {
     const { page = 1, limit = 20 } = pagination;
     const skip = (page - 1) * limit;
 
-    const query: any = { school: new Types.ObjectId(schoolId) };
+    const notificationModel = await this.getNotificationModel(context);
+
+    // For tenant DB, don't filter by school - the entire DB is school-specific
+    const query: any = context?.isTenantUser ? {} : { school: new Types.ObjectId(schoolId) };
 
     if (filters.type) {
       query.type = filters.type;
@@ -262,7 +323,7 @@ export class NotificationsService {
     }
 
     const [notifications, total] = await Promise.all([
-      this.notificationModel
+      notificationModel
         .find(query)
         .populate('sender', 'firstName lastName email')
         .populate('targetClasses', 'name grade')
@@ -270,7 +331,7 @@ export class NotificationsService {
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.notificationModel.countDocuments(query),
+      notificationModel.countDocuments(query),
     ]);
 
     return {

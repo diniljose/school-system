@@ -47,9 +47,12 @@ export class TimetableController {
   async create(
     @Body() createTimetableDto: CreateTimetableDto,
     @CurrentUser('school') schoolId: string,
-    @CurrentUser('_id') userId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @CurrentUser('isTenantUser') isTenantUser: boolean,
   ) {
-    return this.timetableService.create(createTimetableDto, schoolId, userId);
+    const context = { schoolId, schoolCode, isTenantUser };
+    return this.timetableService.create(createTimetableDto, schoolId, userId, context);
   }
 
   @Get()
@@ -68,9 +71,12 @@ export class TimetableController {
   })
   async findAll(
     @CurrentUser('school') schoolId: string,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @CurrentUser('isTenantUser') isTenantUser: boolean,
     @Query() query: QueryTimetableDto,
   ) {
-    return this.timetableService.findAll(schoolId, query);
+    const context = { schoolId, schoolCode, isTenantUser };
+    return this.timetableService.findAll(schoolId, query, context);
   }
 
   @Get(':id')

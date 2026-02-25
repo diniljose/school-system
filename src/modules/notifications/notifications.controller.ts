@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Patch,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +18,7 @@ import {
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { SendNotificationDto } from './dto/send-notification.dto';
@@ -46,8 +48,13 @@ export class NotificationsController {
     @Body() createDto: CreateNotificationDto,
     @CurrentUser('school') schoolId: string,
     @CurrentUser('id') senderId: string,
+    @Req() req: Request,
   ) {
-    return this.notificationsService.create(createDto, schoolId, senderId);
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
+    return this.notificationsService.create(createDto, schoolId, senderId, tenantContext);
   }
 
   @Post(':id/send')
@@ -105,12 +112,17 @@ export class NotificationsController {
   async findAll(
     @CurrentUser('school') schoolId: string,
     @Query() filters: QueryNotificationDto,
+    @Req() req: Request,
   ) {
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
     const { page, limit, ...queryFilters } = filters;
     return this.notificationsService.findAll(schoolId, queryFilters, {
       page,
       limit,
-    });
+    }, tenantContext);
   }
 
   @Get('my')

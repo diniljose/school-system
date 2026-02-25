@@ -625,11 +625,29 @@ export class AuthService {
       throw new BadRequestException('Selected class not found in this school.');
     }
 
-    // Verify section exists in class
+    // Verify section if provided and class has sections
     const classData = classDoc as any;
-    const sectionExists = classData.sections?.some((s: any) => s.name === dto.section);
-    if (!sectionExists) {
-      throw new BadRequestException(`Section "${dto.section}" not found in the selected class.`);
+    const classSections = classData.sections || [];
+    let finalSection = dto.section;
+    
+    if (classSections.length > 0) {
+      // Class has sections defined
+      if (dto.section) {
+        // Student provided a section - validate it
+        const sectionExists = classSections.some((s: any) => s.name === dto.section);
+        if (!sectionExists) {
+          throw new BadRequestException(`Section "${dto.section}" not found in the selected class.`);
+        }
+      } else if (classSections.length === 1) {
+        // Auto-assign single section
+        finalSection = classSections[0].name;
+      } else {
+        // Multiple sections and none selected - require selection
+        throw new BadRequestException('Please select a section.');
+      }
+    } else {
+      // Class has no sections - use 'A' as default or empty
+      finalSection = '';
     }
 
     // Hash password for user account
@@ -649,7 +667,7 @@ export class AuthService {
       dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
       gender: dto.gender,
       currentClass: dto.classId,
-      currentSection: dto.section,
+      currentSection: finalSection || undefined,
       status: StudentStatus.PENDING_APPROVAL,
       contact: {
         email: dto.email,
@@ -672,7 +690,7 @@ export class AuthService {
 
     const createdStudent = student as any;
     this.logger.log(
-      `New student registration pending approval: ${dto.firstName} ${dto.lastName} - ${classData.name} Section ${dto.section} @ ${schoolDoc.name}`,
+      `New student registration pending approval: ${dto.firstName} ${dto.lastName} - ${classData.name}${finalSection ? ` Section ${finalSection}` : ''} @ ${schoolDoc.name}`,
     );
 
     return {
@@ -686,7 +704,96 @@ export class AuthService {
           code: schoolDoc.code,
         },
         class: classData.name,
-        section: dto.section,
+        section: finalSection || null,
+        status: 'pending_approval',
+      },
+    };
+  }
+
+  /**
+   * Teacher self-registration with APPROVAL WORKFLOW.
+   * Teacher is created with status = PENDING_APPROVAL.
+   * Teacher CANNOT login until Principal approves the registration.
+   */
+  async registerTeacher(dto: any) {
+    // Find school by code
+    const school = await this.schoolsService.findByCode(dto.schoolCode);
+    if (!school) {
+      throw new BadRequestException('Invalid school code. Please check and try again.');
+    }
+
+    const schoolDoc = school as any;
+    if (schoolDoc.status !== 'active') {
+      throw new BadRequestException('This school is not accepting registrations at the moment.');
+    }
+
+    // Get tenant Teacher model
+    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
+      dto.schoolCode,
+      'Teacher',
+    );
+
+    // Check if email already registered in this school
+    const UserModel = await this.tenantDatabaseService.getTenantModel(
+      dto.schoolCode,
+      'User',
+    );
+    const existingUser = await UserModel.findOne({ email: dto.email });
+    if (existingUser) {
+      throw new BadRequestException('This email is already registered in this school.');
+    }
+
+    const existingTeacher = await TeacherModel.findOne({ email: dto.email });
+    if (existingTeacher) {
+      throw new BadRequestException('A teacher registration with this email already exists.');
+    }
+
+    // Hash password for user account
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // Generate employee ID
+    const year = new Date().getFullYear();
+    const count = await TeacherModel.countDocuments();
+    const employeeId = `TCHR${year}${String(count + 1).padStart(5, '0')}`;
+
+    // Create teacher with pending status
+    const teacher = await TeacherModel.create({
+      school: schoolDoc._id,
+      employeeId,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      phone: dto.phone,
+      gender: dto.gender,
+      dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+      designation: dto.designation || 'Teacher',
+      department: dto.department,
+      qualifications: dto.qualifications || [],
+      status: 'pending_approval',
+      metadata: {
+        pendingApproval: true,
+        registrationDate: new Date(),
+        passwordHash,
+        message: dto.message,
+        roleCode: dto.roleCode,
+      },
+    });
+
+    const createdTeacher = teacher as any;
+    this.logger.log(
+      `New teacher registration pending approval: ${dto.firstName} ${dto.lastName} - ${employeeId} @ ${schoolDoc.name}`,
+    );
+
+    return {
+      success: true,
+      message: 'Your registration has been submitted successfully! The school principal will review your application. You will receive an email notification once approved.',
+      data: {
+        registrationId: createdTeacher._id.toString(),
+        employeeId: createdTeacher.employeeId,
+        school: {
+          name: schoolDoc.name,
+          code: schoolDoc.code,
+        },
         status: 'pending_approval',
       },
     };
@@ -1072,6 +1179,33 @@ export class AuthService {
     };
   }
 
+  async getPublicSchoolAcademicYears(schoolCode: string) {
+    const school = await this.schoolsService.findByCode(schoolCode);
+    if (!school) {
+      throw new BadRequestException('School not found');
+    }
+
+    const AcademicYearModel = await this.tenantDatabaseService.getTenantModel(
+      schoolCode,
+      'AcademicYear',
+    );
+
+    const years = await AcademicYearModel.find({ isActive: true })
+      .select('name startDate endDate isCurrent')
+      .sort({ startDate: -1 });
+
+    return {
+      success: true,
+      data: years.map((y: any) => ({
+        _id: y._id,
+        name: y.name,
+        startDate: y.startDate,
+        endDate: y.endDate,
+        isCurrent: y.isCurrent || false,
+      })),
+    };
+  }
+
   // ════════════════════════════════════════════════════════════════════════════
   // STUDENT APPROVAL WORKFLOW
   // ════════════════════════════════════════════════════════════════════════════
@@ -1291,6 +1425,167 @@ export class AuthService {
           _id: studentDoc._id,
           firstName: studentDoc.firstName,
           lastName: studentDoc.lastName,
+        },
+        reason,
+      },
+    };
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // TEACHER APPROVAL WORKFLOW
+  // ════════════════════════════════════════════════════════════════════════════
+
+  async getPendingTeachers(schoolId: string, schoolCode: string) {
+    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
+      schoolCode,
+      'Teacher',
+    );
+
+    const teachers = await TeacherModel.find({
+      status: 'pending_approval',
+    }).sort({ createdAt: -1 });
+
+    return {
+      success: true,
+      data: teachers.map((t: any) => ({
+        _id: t._id,
+        employeeId: t.employeeId,
+        firstName: t.firstName,
+        lastName: t.lastName,
+        email: t.email,
+        phone: t.phone,
+        gender: t.gender,
+        designation: t.designation,
+        department: t.department,
+        qualifications: t.qualifications,
+        registrationDate: t.metadata?.registrationDate,
+        message: t.metadata?.message,
+      })),
+    };
+  }
+
+  async approveTeacher(
+    teacherId: string,
+    schoolId: string,
+    schoolCode: string,
+    approvedById: string,
+  ) {
+    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
+      schoolCode,
+      'Teacher',
+    );
+    const UserModel = await this.tenantDatabaseService.getTenantModel(
+      schoolCode,
+      'User',
+    );
+
+    const teacher = await TeacherModel.findById(teacherId);
+    if (!teacher) {
+      throw new BadRequestException('Teacher not found');
+    }
+
+    const teacherDoc = teacher as any;
+    if (teacherDoc.status !== 'pending_approval') {
+      throw new BadRequestException('Teacher is not pending approval');
+    }
+
+    // Create user account for teacher
+    const email = teacherDoc.email;
+    const passwordHash = teacherDoc.metadata?.passwordHash;
+
+    if (!email || !passwordHash) {
+      throw new BadRequestException('Teacher registration data incomplete');
+    }
+
+    // Determine role - default to 'teacher' if no specific role provided
+    const roleCode = teacherDoc.metadata?.roleCode || 'teacher';
+    const role = roleCode === 'class_teacher' ? UserRole.CLASS_TEACHER : UserRole.TEACHER;
+
+    const user = await UserModel.create({
+      email,
+      password: passwordHash,
+      firstName: teacherDoc.firstName,
+      lastName: teacherDoc.lastName,
+      role,
+      school: schoolId,
+      isActive: true,
+    });
+
+    // Update teacher status and link user
+    teacherDoc.status = 'active';
+    teacherDoc.user = user._id;
+    teacherDoc.joiningDate = new Date();
+
+    // Clean up metadata
+    if (teacherDoc.metadata) {
+      delete teacherDoc.metadata.pendingApproval;
+      delete teacherDoc.metadata.passwordHash;
+    }
+
+    await teacherDoc.save();
+
+    this.logger.log(
+      `Teacher approved: ${teacherDoc.firstName} ${teacherDoc.lastName} - ${teacherDoc.employeeId}`,
+    );
+
+    return {
+      success: true,
+      message: 'Teacher approved successfully! They can now log in.',
+      data: {
+        teacher: {
+          _id: teacherDoc._id,
+          employeeId: teacherDoc.employeeId,
+          firstName: teacherDoc.firstName,
+          lastName: teacherDoc.lastName,
+          email,
+        },
+      },
+    };
+  }
+
+  async rejectTeacher(
+    teacherId: string,
+    schoolId: string,
+    schoolCode: string,
+    rejectedById: string,
+    reason: string,
+  ) {
+    const TeacherModel = await this.tenantDatabaseService.getTenantModel(
+      schoolCode,
+      'Teacher',
+    );
+
+    const teacher = await TeacherModel.findById(teacherId);
+    if (!teacher) {
+      throw new BadRequestException('Teacher not found');
+    }
+
+    const teacherDoc = teacher as any;
+    if (teacherDoc.status !== 'pending_approval') {
+      throw new BadRequestException('Teacher is not pending approval');
+    }
+
+    teacherDoc.status = 'rejected';
+    teacherDoc.metadata = {
+      ...teacherDoc.metadata,
+      rejectedAt: new Date(),
+      rejectedBy: rejectedById,
+      rejectionReason: reason,
+    };
+    await teacherDoc.save();
+
+    this.logger.log(
+      `Teacher registration rejected: ${teacherDoc.firstName} ${teacherDoc.lastName} - Reason: ${reason}`,
+    );
+
+    return {
+      success: true,
+      message: 'Teacher registration rejected',
+      data: {
+        teacher: {
+          _id: teacherDoc._id,
+          firstName: teacherDoc.firstName,
+          lastName: teacherDoc.lastName,
         },
         reason,
       },
