@@ -6,14 +6,28 @@ import {
   IsOptional,
   IsMongoId,
   IsDateString,
+  IsEnum,
   Min,
 } from 'class-validator';
+
+export enum ExamScheduleStatus {
+  SCHEDULED = 'scheduled',
+  ONGOING = 'ongoing',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+  POSTPONED = 'postponed',
+}
 
 export class ExamScheduleDto {
   @ApiProperty({ description: 'Class ID' })
   @IsNotEmpty()
   @IsMongoId()
   class: string;
+
+  @ApiPropertyOptional({ description: 'Section (optional - if not provided, applies to all sections)' })
+  @IsOptional()
+  @IsString()
+  section?: string;
 
   @ApiProperty({ description: 'Subject ID' })
   @IsNotEmpty()
@@ -51,4 +65,19 @@ export class ExamScheduleDto {
   @IsOptional()
   @IsString()
   room?: string;
+
+  @ApiPropertyOptional({ description: 'Exam instructions for students' })
+  @IsOptional()
+  @IsString()
+  instructions?: string;
+
+  @ApiPropertyOptional({ description: 'Schedule status', enum: ExamScheduleStatus })
+  @IsOptional()
+  @IsEnum(ExamScheduleStatus)
+  status?: ExamScheduleStatus;
+
+  @ApiPropertyOptional({ description: 'Supervisor/Invigilator name or ID' })
+  @IsOptional()
+  @IsString()
+  supervisor?: string;
 }

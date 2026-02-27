@@ -8,7 +8,9 @@ import {
   Delete,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -41,8 +43,12 @@ export class ExamsController {
   async create(
     @Body() createExamDto: CreateExamDto,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.examsService.create(createExamDto, schoolId);
+    return this.examsService.create(createExamDto, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Get()
@@ -65,6 +71,92 @@ export class ExamsController {
   })
   async getUpcomingExams(@CurrentUser('school') schoolId: string) {
     return this.examsService.getUpcomingExams(schoolId);
+  }
+
+  @Get('dashboard')
+  @RequirePermissions('exam:view')
+  @ApiOperation({ summary: 'Get exams dashboard summary' })
+  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
+  async getExamsDashboard(
+    @Query('academicYear') academicYearId: string,
+    @CurrentUser('school') schoolId: string,
+  ) {
+    return this.examsService.getExamsDashboard(schoolId, academicYearId);
+  }
+
+  @Get('class/:classId/section/:section')
+  @RequirePermissions('exam:view')
+  @ApiOperation({ summary: 'Get exams for a specific class and section' })
+  @ApiResponse({ status: 200, description: 'Exams retrieved successfully' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiParam({ name: 'section', description: 'Section name' })
+  async getExamsByClassSection(
+    @Param('classId') classId: string,
+    @Param('section') section: string,
+    @Query('academicYear') academicYearId: string,
+    @CurrentUser('school') schoolId: string,
+  ) {
+    return this.examsService.getExamsByClassSection(
+      classId,
+      section,
+      schoolId,
+      academicYearId,
+    );
+  }
+
+  @Get('class/:classId/section/:section/exam/:examId/timetable')
+  @RequirePermissions('exam:view')
+  @ApiOperation({ summary: 'Get detailed exam timetable for a class/section' })
+  @ApiResponse({ status: 200, description: 'Class exam timetable retrieved successfully' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiParam({ name: 'section', description: 'Section name' })
+  @ApiParam({ name: 'examId', description: 'Exam ID' })
+  async getClassExamTimetable(
+    @Param('classId') classId: string,
+    @Param('section') section: string,
+    @Param('examId') examId: string,
+    @CurrentUser('school') schoolId: string,
+  ) {
+    return this.examsService.getClassExamTimetable(
+      classId,
+      section,
+      examId,
+      schoolId,
+    );
+  }
+
+  @Get('student/:studentId')
+  @RequirePermissions('exam:view')
+  @ApiOperation({ summary: 'Get exams for a student (upcoming, ongoing, completed)' })
+  @ApiResponse({ status: 200, description: 'Student exams retrieved successfully' })
+  @ApiParam({ name: 'studentId', description: 'Student ID' })
+  async getStudentExams(
+    @Param('studentId') studentId: string,
+    @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
+  ) {
+    return this.examsService.getStudentExams(studentId, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
+  }
+
+  @Get('student/:studentId/exam/:examId/attendance')
+  @RequirePermissions('exam:view')
+  @ApiOperation({ summary: 'Get student attendance for exam dates' })
+  @ApiResponse({ status: 200, description: 'Student exam attendance retrieved' })
+  @ApiParam({ name: 'studentId', description: 'Student ID' })
+  @ApiParam({ name: 'examId', description: 'Exam ID' })
+  async getStudentExamAttendance(
+    @Param('studentId') studentId: string,
+    @Param('examId') examId: string,
+    @CurrentUser('school') schoolId: string,
+  ) {
+    return this.examsService.getStudentExamAttendance(
+      studentId,
+      examId,
+      schoolId,
+    );
   }
 
   @Get(':id')
@@ -90,8 +182,12 @@ export class ExamsController {
     @Param('id') id: string,
     @Body() updateExamDto: UpdateExamDto,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.examsService.update(id, updateExamDto, schoolId);
+    return this.examsService.update(id, updateExamDto, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Delete(':id')
@@ -147,8 +243,12 @@ export class ExamsController {
     @Param('id') id: string,
     @Body() scheduleDto: ExamScheduleDto,
     @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
   ) {
-    return this.examsService.addSchedule(id, scheduleDto, schoolId);
+    return this.examsService.addSchedule(id, scheduleDto, schoolId, {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    });
   }
 
   @Patch(':id/schedule/:scheduleId')
@@ -200,4 +300,3 @@ export class ExamsController {
     return this.examsService.getExamTimetable(id, schoolId);
   }
 }
-

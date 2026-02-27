@@ -11,10 +11,25 @@ import {
   Subject,
   SubjectDocument,
 } from '../../database/schemas/subject.schema';
+import {
+  Student,
+  StudentDocument,
+} from '../../database/schemas/student.schema';
+import {
+  Attendance,
+  AttendanceDocument,
+} from '../../database/schemas/attendance.schema';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 import { QueryExamDto } from './dto/query-exam.dto';
 import { ExamScheduleDto } from './dto/exam-schedule.dto';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
+
+export interface TenantContext {
+  schoolId?: string;
+  schoolCode?: string;
+  isTenantUser?: boolean;
+}
 
 @Injectable()
 export class ExamsService {
@@ -25,9 +40,50 @@ export class ExamsService {
     private classModel: Model<ClassDocument>,
     @InjectModel(Subject.name)
     private subjectModel: Model<SubjectDocument>,
+    @InjectModel(Student.name)
+    private studentModel: Model<StudentDocument>,
+    @InjectModel(Attendance.name)
+    private attendanceModel: Model<AttendanceDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
 
-  async create(createExamDto: CreateExamDto, schoolId: string) {
+  private async getStudentModel(
+    context?: TenantContext,
+  ): Promise<Model<StudentDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<StudentDocument>(
+        context.schoolCode,
+        'Student',
+      );
+    }
+    return this.studentModel;
+  }
+
+  private async getClassModel(
+    context?: TenantContext,
+  ): Promise<Model<ClassDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ClassDocument>(
+        context.schoolCode,
+        'Class',
+      );
+    }
+    return this.classModel;
+  }
+
+  private async getSubjectModel(
+    context?: TenantContext,
+  ): Promise<Model<SubjectDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<SubjectDocument>(
+        context.schoolCode,
+        'Subject',
+      );
+    }
+    return this.subjectModel;
+  }
+
+  async create(createExamDto: CreateExamDto, schoolId: string, context?: TenantContext) {
     const startDate = new Date(createExamDto.startDate);
     const endDate = new Date(createExamDto.endDate);
 
@@ -43,6 +99,7 @@ export class ExamsService {
       startDate,
       endDate,
       description: createExamDto.description,
+      status: createExamDto.status || 'scheduled',
       resultsPublished: createExamDto.resultsPublished || false,
       isActive:
         createExamDto.isActive !== undefined ? createExamDto.isActive : true,
@@ -54,16 +111,50 @@ export class ExamsService {
       );
     }
 
+    // Support sections
+    if (createExamDto.sections && createExamDto.sections.length > 0) {
+      examData.sections = createExamDto.sections;
+    }
+
+    // Support study leave days
+    if (createExamDto.studyLeaveDays && createExamDto.studyLeaveDays.length > 0) {
+      examData.studyLeaveDays = createExamDto.studyLeaveDays.map(d => new Date(d));
+    }
+
     if (createExamDto.schedule && createExamDto.schedule.length > 0) {
+      // Use tenant models for lookup
+      const classModelToUse = await this.getClassModel(context);
+      const subjectModelToUse = await this.getSubjectModel(context);
+      
+      // Look up class and subject names for denormalization
+      const classIds = [...new Set(createExamDto.schedule.map(s => s.class).filter(Boolean))];
+      const subjectIds = [...new Set(createExamDto.schedule.map(s => s.subject).filter(Boolean))];
+      
+      const classes = classIds.length > 0 
+        ? await classModelToUse.find({ _id: { $in: classIds.map(id => new Types.ObjectId(id)) } }).exec()
+        : [];
+      const subjects = subjectIds.length > 0
+        ? await subjectModelToUse.find({ _id: { $in: subjectIds.map(id => new Types.ObjectId(id)) } }).exec()
+        : [];
+      
+      const classMap = new Map(classes.map(c => [c._id.toString(), c.name]));
+      const subjectMap = new Map(subjects.map(s => [s._id.toString(), s.name]));
+
       examData.schedule = createExamDto.schedule.map((item) => ({
-        class: new Types.ObjectId(item.class),
-        subject: new Types.ObjectId(item.subject),
+        class: item.class ? new Types.ObjectId(item.class) : null,
+        className: classMap.get(item.class) || '',
+        section: item.section || null,
+        subject: item.subject ? new Types.ObjectId(item.subject) : null,
+        subjectName: subjectMap.get(item.subject) || '',
         date: new Date(item.date),
         startTime: item.startTime,
         endTime: item.endTime,
         maxMarks: item.maxMarks,
         passingMarks: item.passingMarks,
         room: item.room || '',
+        instructions: item.instructions || '',
+        status: item.status || 'scheduled',
+        supervisor: item.supervisor || '',
       }));
     }
 
@@ -116,7 +207,8 @@ export class ExamsService {
       this.examModel
         .find(filter)
         .populate('academicYear', 'name year')
-        .populate('classes', 'name grade')
+        // Note: Don't populate schedule.class and schedule.subject as they're in tenant DBs
+        // Use denormalized className and subjectName fields instead
         .sort({ startDate: -1 })
         .skip(skip)
         .limit(limit)
@@ -140,9 +232,7 @@ export class ExamsService {
         school: new Types.ObjectId(schoolId),
       })
       .populate('academicYear', 'name year')
-      .populate('classes', 'name grade')
-      .populate('schedule.class', 'name grade')
-      .populate('schedule.subject', 'name code')
+      // Note: Don't populate schedule.class and schedule.subject - use denormalized fields
       .exec();
 
     if (!exam) {
@@ -152,7 +242,7 @@ export class ExamsService {
     return exam;
   }
 
-  async update(id: string, updateExamDto: UpdateExamDto, schoolId: string) {
+  async update(id: string, updateExamDto: UpdateExamDto, schoolId: string, context?: TenantContext) {
     const exam = await this.examModel.findOne({
       _id: new Types.ObjectId(id),
       school: new Types.ObjectId(schoolId),
@@ -188,6 +278,8 @@ export class ExamsService {
       updateData.isActive = updateExamDto.isActive;
     if (updateExamDto.resultPublishDate)
       updateData.resultPublishDate = new Date(updateExamDto.resultPublishDate);
+    if (updateExamDto.status)
+      updateData.status = updateExamDto.status;
 
     if (updateExamDto.classes) {
       updateData.classes = updateExamDto.classes.map(
@@ -195,16 +287,50 @@ export class ExamsService {
       );
     }
 
+    // Handle sections
+    if (updateExamDto.sections !== undefined) {
+      updateData.sections = updateExamDto.sections;
+    }
+
+    // Handle study leave days
+    if (updateExamDto.studyLeaveDays) {
+      updateData.studyLeaveDays = updateExamDto.studyLeaveDays.map(d => new Date(d));
+    }
+
     if (updateExamDto.schedule) {
+      // Use tenant models for lookup
+      const classModelToUse = await this.getClassModel(context);
+      const subjectModelToUse = await this.getSubjectModel(context);
+      
+      // Look up class and subject names for denormalization
+      const classIds = [...new Set(updateExamDto.schedule.map(s => s.class).filter(Boolean))];
+      const subjectIds = [...new Set(updateExamDto.schedule.map(s => s.subject).filter(Boolean))];
+      
+      const classes = classIds.length > 0
+        ? await classModelToUse.find({ _id: { $in: classIds.map(id => new Types.ObjectId(id)) } }).exec()
+        : [];
+      const subjects = subjectIds.length > 0
+        ? await subjectModelToUse.find({ _id: { $in: subjectIds.map(id => new Types.ObjectId(id)) } }).exec()
+        : [];
+      
+      const classMap = new Map(classes.map(c => [c._id.toString(), c.name]));
+      const subjectMap = new Map(subjects.map(s => [s._id.toString(), s.name]));
+
       updateData.schedule = updateExamDto.schedule.map((item) => ({
-        class: new Types.ObjectId(item.class),
-        subject: new Types.ObjectId(item.subject),
+        class: item.class ? new Types.ObjectId(item.class) : null,
+        className: classMap.get(item.class) || '',
+        section: item.section || null,
+        subject: item.subject ? new Types.ObjectId(item.subject) : null,
+        subjectName: subjectMap.get(item.subject) || '',
         date: new Date(item.date),
         startTime: item.startTime,
         endTime: item.endTime,
         maxMarks: item.maxMarks,
         passingMarks: item.passingMarks,
         room: item.room || '',
+        instructions: item.instructions || '',
+        status: item.status || 'scheduled',
+        supervisor: item.supervisor || '',
       }));
     }
 
@@ -289,6 +415,7 @@ export class ExamsService {
     examId: string,
     scheduleDto: ExamScheduleDto,
     schoolId: string,
+    context?: TenantContext,
   ) {
     const exam = await this.examModel.findOne({
       _id: new Types.ObjectId(examId),
@@ -299,33 +426,48 @@ export class ExamsService {
       throw new NotFoundException('Exam not found');
     }
 
-    const classDoc = await this.classModel.findOne({
-      _id: new Types.ObjectId(scheduleDto.class),
-      school: new Types.ObjectId(schoolId),
-    });
-
-    if (!classDoc) {
-      throw new NotFoundException('Class not found');
+    // Allow any valid MongoDB ObjectId for class (multi-tenant classes may be different)
+    let classObjectId: Types.ObjectId | null = null;
+    if (scheduleDto.class) {
+      try {
+        classObjectId = new Types.ObjectId(scheduleDto.class);
+      } catch {
+        throw new BadRequestException('Invalid class ID format');
+      }
     }
 
-    const subject = await this.subjectModel.findOne({
-      _id: new Types.ObjectId(scheduleDto.subject),
-      school: new Types.ObjectId(schoolId),
-    });
-
-    if (!subject) {
-      throw new NotFoundException('Subject not found');
+    let subjectObjectId: Types.ObjectId | null = null;
+    if (scheduleDto.subject) {
+      try {
+        subjectObjectId = new Types.ObjectId(scheduleDto.subject);
+      } catch {
+        throw new BadRequestException('Invalid subject ID format');
+      }
     }
+
+    // Use tenant models for lookup
+    const classModelToUse = await this.getClassModel(context);
+    const subjectModelToUse = await this.getSubjectModel(context);
+
+    // Look up class and subject names for denormalization
+    const classDoc = classObjectId ? await classModelToUse.findById(classObjectId).exec() : null;
+    const subjectDoc = subjectObjectId ? await subjectModelToUse.findById(subjectObjectId).exec() : null;
 
     const scheduleItem: any = {
-      class: new Types.ObjectId(scheduleDto.class),
-      subject: new Types.ObjectId(scheduleDto.subject),
+      class: classObjectId,
+      className: classDoc?.name || '',
+      section: scheduleDto.section || null,
+      subject: subjectObjectId,
+      subjectName: subjectDoc?.name || '',
       date: new Date(scheduleDto.date),
       startTime: scheduleDto.startTime,
       endTime: scheduleDto.endTime,
       maxMarks: scheduleDto.maxMarks,
       passingMarks: scheduleDto.passingMarks,
       room: scheduleDto.room || '',
+      instructions: scheduleDto.instructions || '',
+      status: scheduleDto.status || 'scheduled',
+      supervisor: scheduleDto.supervisor || '',
     };
 
     exam.schedule.push(scheduleItem);
@@ -404,8 +546,7 @@ export class ExamsService {
         _id: new Types.ObjectId(examId),
         school: new Types.ObjectId(schoolId),
       })
-      .populate('schedule.class', 'name grade')
-      .populate('schedule.subject', 'name code')
+      /* schedule.class and schedule.subject not populated - using denormalized fields */
       .exec();
 
     if (!exam) {
@@ -423,8 +564,7 @@ export class ExamsService {
       })
       .populate('academicYear', 'name year')
       .populate('classes', 'name grade')
-      .populate('schedule.class', 'name grade')
-      .populate('schedule.subject', 'name code')
+      /* schedule.class and schedule.subject not populated - using denormalized fields */
       .exec();
 
     if (!exam) {
@@ -486,4 +626,291 @@ export class ExamsService {
 
     return exams;
   }
+
+  // Get exams for a specific class and section
+  async getExamsByClassSection(
+    classId: string,
+    section: string,
+    schoolId: string,
+    academicYearId?: string,
+  ) {
+    const filter: any = {
+      school: new Types.ObjectId(schoolId),
+      isActive: true,
+      classes: new Types.ObjectId(classId),
+      $or: [
+        { sections: { $size: 0 } }, // No sections specified = all sections
+        { sections: section },
+        { 'schedule.class': new Types.ObjectId(classId), 'schedule.section': section },
+        { 'schedule.class': new Types.ObjectId(classId), 'schedule.section': null },
+      ],
+    };
+
+    if (academicYearId) {
+      filter.academicYear = new Types.ObjectId(academicYearId);
+    }
+
+    const exams = await this.examModel
+      .find(filter)
+      .populate('academicYear', 'name year')
+      .populate('classes', 'name grade')
+      /* schedule.class and schedule.subject not populated - using denormalized fields */
+      .sort({ startDate: -1 })
+      .exec();
+
+    // Filter schedule items to only include relevant class/section
+    return exams.map((exam) => {
+      const examObj = exam.toObject();
+      examObj.schedule = examObj.schedule.filter(
+        (s: any) =>
+          s.class?._id?.toString() === classId &&
+          (!s.section || s.section === section),
+      );
+      return examObj;
+    });
+  }
+
+  // Get exams for a student based on their class and section
+  async getStudentExams(studentId: string, schoolId: string, context?: TenantContext) {
+    const model = await this.getStudentModel(context);
+    
+    const filter: any = { _id: new Types.ObjectId(studentId) };
+    // Only filter by school if not using tenant DB (tenant DB already scoped)
+    if (!context?.isTenantUser) {
+      filter.school = new Types.ObjectId(schoolId);
+    }
+    
+    const student = await model.findOne(filter);
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const classId = student.currentClass?.toString();
+    const section = student.currentSection;
+
+    if (!classId) {
+      return { upcoming: [], completed: [], ongoing: [] };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const allExams = await this.getExamsByClassSection(
+      classId,
+      section,
+      schoolId,
+    );
+
+    const upcoming = allExams.filter(
+      (e) => new Date(e.startDate) > today,
+    );
+    const ongoing = allExams.filter(
+      (e) =>
+        new Date(e.startDate) <= today && new Date(e.endDate) >= today,
+    );
+    const completed = allExams.filter(
+      (e) => new Date(e.endDate) < today,
+    );
+
+    return { upcoming, ongoing, completed };
+  }
+
+  // Get detailed exam schedule for a class/section (timetable view)
+  async getClassExamTimetable(
+    classId: string,
+    section: string,
+    examId: string,
+    schoolId: string,
+  ) {
+    const exam = await this.examModel
+      .findOne({
+        _id: new Types.ObjectId(examId),
+        school: new Types.ObjectId(schoolId),
+        classes: new Types.ObjectId(classId),
+      })
+      .populate('academicYear', 'name year')
+      .populate('classes', 'name grade')
+      /* schedule.class and schedule.subject not populated - using denormalized fields */
+      .exec();
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found for this class');
+    }
+
+    // Filter schedule for this class/section
+    const filteredSchedule = exam.schedule.filter(
+      (s: any) =>
+        s.class?._id?.toString() === classId &&
+        (!s.section || s.section === section),
+    );
+
+    // Group by date for timetable view
+    const timetableByDate: { [date: string]: any[] } = {};
+    filteredSchedule.forEach((s: any) => {
+      const dateKey = new Date(s.date).toISOString().split('T')[0];
+      if (!timetableByDate[dateKey]) {
+        timetableByDate[dateKey] = [];
+      }
+      timetableByDate[dateKey].push(s);
+    });
+
+    // Sort each day's exams by start time
+    Object.values(timetableByDate).forEach((dayExams) => {
+      dayExams.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    });
+
+    // Mark study leave days
+    const studyLeaveDays = exam.studyLeaveDays.map((d: Date) =>
+      d.toISOString().split('T')[0],
+    );
+
+    return {
+      exam: {
+        id: exam._id,
+        name: exam.name,
+        examType: exam.examType,
+        startDate: exam.startDate,
+        endDate: exam.endDate,
+        status: exam.status,
+        description: exam.description,
+      },
+      timetable: timetableByDate,
+      studyLeaveDays,
+    };
+  }
+
+  // Get student's exam attendance (were they present on exam days)
+  async getStudentExamAttendance(
+    studentId: string,
+    examId: string,
+    schoolId: string,
+  ) {
+    const student = await this.studentModel.findOne({
+      _id: new Types.ObjectId(studentId),
+      school: new Types.ObjectId(schoolId),
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const exam = await this.examModel
+      .findOne({
+        _id: new Types.ObjectId(examId),
+        school: new Types.ObjectId(schoolId),
+      })
+      /* schedule.subject not populated - using denormalized subjectName field */
+      .exec();
+
+    if (!exam) {
+      throw new NotFoundException('Exam not found');
+    }
+
+    // Get relevant schedule items for this student's class/section
+    const relevantSchedule = exam.schedule.filter(
+      (s: any) =>
+        s.class?.toString() === student.currentClass?.toString() &&
+        (!s.section || s.section === student.currentSection),
+    );
+
+    // Get attendance for each exam date
+    const examDates = [...new Set(relevantSchedule.map((s: any) =>
+      new Date(s.date).toISOString().split('T')[0]
+    ))];
+
+    const attendanceRecords = await Promise.all(
+      examDates.map(async (dateStr) => {
+        const date = new Date(dateStr);
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        const attendance = await this.attendanceModel.findOne({
+          school: new Types.ObjectId(schoolId),
+          class: student.currentClass,
+          section: student.currentSection,
+          date: { $gte: date, $lt: nextDay },
+        });
+
+        if (!attendance) {
+          return { date: dateStr, status: 'not_marked', subjects: [] };
+        }
+
+        const studentRecord = attendance.records.find(
+          (r: any) => r.student?.toString() === studentId,
+        );
+
+        const subjectsOnDate = relevantSchedule
+          .filter((s: any) =>
+            new Date(s.date).toISOString().split('T')[0] === dateStr,
+          )
+          .map((s: any) => ({
+            subject: (s.subject as any)?.name || 'Unknown',
+            startTime: s.startTime,
+            endTime: s.endTime,
+          }));
+
+        return {
+          date: dateStr,
+          status: studentRecord?.status || 'not_marked',
+          remarks: studentRecord?.remarks || '',
+          subjects: subjectsOnDate,
+        };
+      }),
+    );
+
+    return {
+      student: {
+        id: student._id,
+        name: `${student.firstName} ${student.lastName}`,
+        rollNumber: student.rollNumber,
+      },
+      exam: {
+        id: exam._id,
+        name: exam.name,
+      },
+      attendance: attendanceRecords,
+    };
+  }
+
+  // Get all exams summary for dashboard
+  async getExamsDashboard(schoolId: string, academicYearId?: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const filter: any = {
+      school: new Types.ObjectId(schoolId),
+      isActive: true,
+    };
+
+    if (academicYearId) {
+      filter.academicYear = new Types.ObjectId(academicYearId);
+    }
+
+    const exams = await this.examModel
+      .find(filter)
+      .populate('academicYear', 'name year')
+      .populate('classes', 'name grade')
+      .sort({ startDate: -1 })
+      .exec();
+
+    const upcoming = exams.filter((e) => new Date(e.startDate) > today).slice(0, 5);
+    const ongoing = exams.filter(
+      (e) => new Date(e.startDate) <= today && new Date(e.endDate) >= today,
+    );
+    const recent = exams
+      .filter((e) => new Date(e.endDate) < today)
+      .slice(0, 5);
+
+    return {
+      totalExams: exams.length,
+      upcomingCount: exams.filter((e) => new Date(e.startDate) > today).length,
+      ongoingCount: ongoing.length,
+      completedCount: exams.filter((e) => new Date(e.endDate) < today).length,
+      upcoming,
+      ongoing,
+      recent,
+    };
+  }
 }
+

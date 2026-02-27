@@ -87,6 +87,11 @@ export class CreateExamDto {
   @IsString()
   status?: string;
 
+  @ApiPropertyOptional({ description: 'Sections (if empty, applies to all sections)', type: [String] })
+  @IsOptional()
+  @IsArray()
+  sections?: string[];
+
   @ApiPropertyOptional({ description: 'Exam schedule', type: [ExamScheduleDto] })
   @IsOptional()
   @IsArray()
@@ -108,4 +113,9 @@ export class CreateExamDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Study leave days (dates with no exams)', type: [String] })
+  @IsOptional()
+  @IsArray()
+  studyLeaveDays?: string[];
 }
