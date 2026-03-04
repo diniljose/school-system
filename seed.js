@@ -51,37 +51,151 @@ const patch = (p, b) => request('PATCH', p, b);
 async function clearDatabase() {
   const { MongoClient } = require('mongodb');
   const client = await MongoClient.connect('mongodb://localhost:27017');
+  
+  // Clear main platform database
   const db = client.db('school-platform-dev');
   const collections = await db.listCollections().toArray();
   for (const col of collections) {
     await db.collection(col.name).deleteMany({});
   }
+  
+  // Drop any school tenant databases
+  const adminDb = client.db('admin');
+  const dbs = await adminDb.command({ listDatabases: 1 });
+  for (const d of dbs.databases) {
+    if (d.name.startsWith('school_')) {
+      await client.db(d.name).dropDatabase();
+    }
+  }
+  
   await client.close();
   console.log('✓ Database cleared');
+}
+
+// ── create school and admin user directly ────────────────────────────
+async function createSchoolDirectly() {
+  const { MongoClient, ObjectId } = require('mongodb');
+  const bcrypt = require('bcrypt');
+  
+  const client = await MongoClient.connect('mongodb://localhost:27017');
+  const platformDb = client.db('school-platform-dev');
+  
+  // Create school
+  const schoolCode = 'SIA-001';
+  const schoolId = new ObjectId();
+  const school = {
+    _id: schoolId,
+    name: 'Sunrise International Academy',
+    code: schoolCode,
+    slug: 'sunrise-international-academy',
+    email: 'admin@school.com',
+    status: 'active',
+    isActive: true,
+    dbName: 'school_sia_001',
+    settings: {
+      currency: 'INR',
+      timezone: 'Asia/Kolkata',
+      dateFormat: 'DD/MM/YYYY',
+      workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    },
+    features: {
+      attendance: true,
+      fees: true,
+      exams: true,
+      notifications: true,
+      parentPortal: true,
+      studentPortal: true,
+    },
+    approvedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  await platformDb.collection('schools').insertOne(school);
+  console.log('✓ School created in platform DB');
+  
+  // Create tenant database for the school
+  const tenantDb = client.db('school_sia_001');
+  
+  // Hash password
+  const password = await bcrypt.hash('Admin123!', 10);
+  
+  // Create admin user in tenant database
+  const userId = new ObjectId();
+  const adminUser = {
+    _id: userId,
+    firstName: 'Admin',
+    lastName: 'User',
+    email: 'admin@school.com',
+    password: password,
+    role: 'school_admin',
+    school: schoolId,
+    isActive: true,
+    isSuperAdmin: true, // Grant super admin access
+    permissions: [
+      '*',
+      'teacher:create', 'teacher:view', 'teacher:update', 'teacher:delete',
+      'student:create', 'student:view', 'student:update', 'student:delete',
+      'class:create', 'class:view', 'class:update', 'class:delete',
+      'subject:create', 'subject:view', 'subject:update', 'subject:delete',
+      'exam:create', 'exam:view', 'exam:update', 'exam:delete',
+      'result:create', 'result:view', 'result:update', 'result:delete', 'result:publish',
+      'attendance:create', 'attendance:view', 'attendance:update', 'attendance:delete',
+      'fee:create', 'fee:view', 'fee:update', 'fee:delete',
+      'academic_year:create', 'academic_year:view', 'academic_year:update', 'academic_year:delete',
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  await tenantDb.collection('users').insertOne(adminUser);
+  console.log('✓ Admin user created in tenant DB');
+  
+  // Create default roles
+  const roles = [
+    { name: 'school_admin', displayName: 'School Administrator', permissions: ['*'], isDefault: false, isSystemRole: true },
+    { name: 'teacher', displayName: 'Teacher', permissions: ['result:create', 'result:view', 'result:update', 'attendance:create', 'attendance:view', 'student:view', 'class:view'], isDefault: false, isSystemRole: true },
+    { name: 'student', displayName: 'Student', permissions: ['result:view', 'attendance:view'], isDefault: true, isSystemRole: true },
+  ];
+  await tenantDb.collection('roles').insertMany(roles.map(r => ({ ...r, _id: new ObjectId(), createdAt: new Date(), updatedAt: new Date() })));
+  console.log('✓ Default roles created');
+  
+  // Create academic year
+  const academicYearId = new ObjectId();
+  await tenantDb.collection('academicyears').insertOne({
+    _id: academicYearId,
+    name: '2024-25',
+    startDate: new Date('2024-04-01'),
+    endDate: new Date('2025-03-31'),
+    isCurrent: true,
+    school: schoolId,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  console.log('✓ Academic year created');
+  
+  await client.close();
+  
+  return { schoolId, schoolCode, academicYearId };
 }
 
 // ── seed ─────────────────────────────────────────────────────────────
 async function seed() {
   console.log('\n🌱 Seeding database...\n');
 
-  // 1. Clear
+  // 1. Clear and create school directly in database
   await clearDatabase();
-
-  // 2. Register school  → auto-creates school + admin user + returns JWT
-  const reg = await post('/api/v1/auth/register-school', {
-    schoolName: 'Sunrise International Academy',
-    firstName: 'Admin',
-    lastName: 'User',
+  const { schoolId, schoolCode, academicYearId } = await createSchoolDirectly();
+  
+  // 2. Now login to get a valid token to use the API
+  const loginRes = await post('/api/v1/auth/login', {
     email: 'admin@school.com',
     password: 'Admin123!',
   });
-  if (reg.status !== 201) {
-    console.error('Registration failed:', JSON.stringify(reg.body));
+  if (loginRes.status !== 200 && loginRes.status !== 201) {
+    console.error('Login failed:', JSON.stringify(loginRes.body));
     process.exit(1);
   }
-  TOKEN = reg.body?.data?.accessToken || reg.body?.accessToken;
-  const schoolId = reg.body?.data?.school?._id || reg.body?.data?.school;
-  console.log('✓ School registered — ID:', schoolId);
+  TOKEN = loginRes.body?.data?.accessToken || loginRes.body?.accessToken;
+  console.log('✓ Logged in successfully');
 
   // 3. Create teachers
   const teachers = [

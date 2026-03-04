@@ -8,7 +8,9 @@ import {
   Delete,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -16,6 +18,7 @@ import {
   ApiQuery,
   ApiResponse,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ResultsService } from './results.service';
 import { CreateResultDto } from './dto/create-result.dto';
@@ -47,8 +50,14 @@ export class ResultsController {
     @Body() createResultDto: CreateResultDto,
     @CurrentUser('school') schoolId: string,
     @CurrentUser('id') userId: string,
+    @Req() req: Request,
   ) {
-    return this.resultsService.create(createResultDto, schoolId, userId);
+    const context = {
+      schoolId: (req as any).user?.school,
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
+    return this.resultsService.create(createResultDto, schoolId, userId, context);
   }
 
   @Post('bulk')
@@ -82,11 +91,26 @@ export class ResultsController {
   async findAll(
     @CurrentUser('school') schoolId: string,
     @Query() query: QueryResultDto,
+    @Req() req: Request,
   ) {
-    return this.resultsService.findAll(query.examId, query.classId, schoolId, {
-      page: query.page || 1,
-      limit: query.limit || 20,
-    });
+    const context = {
+      schoolId: (req as any).user?.school,
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
+    return this.resultsService.findAll(
+      query.examId,
+      query.classId,
+      schoolId,
+      {
+        page: query.page || 1,
+        limit: query.limit || 20,
+        studentId: query.studentId,
+        academicYearId: query.academicYearId,
+        isPublished: query.isPublished,
+      },
+      context,
+    );
   }
 
   // ————————————————————————————————————————————————————
@@ -111,6 +135,7 @@ export class ResultsController {
   @ApiOperation({ summary: 'Get student report card for an academic year' })
   @ApiParam({ name: 'studentId', description: 'Student ID' })
   @ApiQuery({ name: 'academicYearId', required: true, type: String })
+  @ApiQuery({ name: 'examId', required: false, type: String })
   @ApiResponse({
     status: 200,
     description: 'Report card retrieved successfully',
@@ -119,8 +144,15 @@ export class ResultsController {
   async getStudentReportCard(
     @Param('studentId') studentId: string,
     @Query('academicYearId') academicYearId: string,
+    @Query('examId') examId: string,
+    @Req() req: Request,
   ) {
-    return this.resultsService.getStudentReportCard(studentId, academicYearId);
+    const context = {
+      schoolId: (req as any).user?.school,
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
+    return this.resultsService.getStudentReportCard(studentId, academicYearId, examId, context);
   }
 
   @Get('trend/:studentId')
@@ -292,6 +324,163 @@ export class ResultsController {
     @Param('classId') classId: string,
   ) {
     return this.resultsService.unpublishResults(examId, classId);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // NEW: Result Entry & Analytics Endpoints
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  @Get('entry/exams')
+  @RequirePermissions('result:create')
+  @ApiOperation({ summary: 'Get exams available for result entry' })
+  @ApiQuery({ name: 'academicYearId', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Exams retrieved successfully' })
+  async getExamsForResultEntry(
+    @CurrentUser('school') schoolId: string,
+    @Query('academicYearId') academicYearId?: string,
+    @Req() req?: Request,
+  ) {
+    const context = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
+    return this.resultsService.getExamsForResultEntry(
+      schoolId,
+      academicYearId,
+      context,
+    );
+  }
+
+  @Get('entry/:examId/:classId/:section')
+  @RequirePermissions('result:create')
+  @ApiOperation({ summary: 'Get students for result entry with existing marks' })
+  @ApiParam({ name: 'examId', description: 'Exam ID' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiParam({ name: 'section', description: 'Section (or "all")' })
+  @ApiResponse({ status: 200, description: 'Students retrieved successfully' })
+  async getStudentsForResultEntry(
+    @Param('examId') examId: string,
+    @Param('classId') classId: string,
+    @Param('section') section: string,
+    @CurrentUser('school') schoolId: string,
+    @Req() req?: Request,
+  ) {
+    const context = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
+    return this.resultsService.getStudentsForResultEntry(
+      examId,
+      classId,
+      section,
+      schoolId,
+      context,
+    );
+  }
+
+  @Post('entry/bulk')
+  @RequirePermissions('result:create')
+  @ApiOperation({ summary: 'Bulk enter marks for students in an exam' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        examId: { type: 'string', description: 'Exam ID' },
+        classId: { type: 'string', description: 'Class ID' },
+        section: { type: 'string', description: 'Section' },
+        academicYearId: { type: 'string', description: 'Academic Year ID' },
+        marks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              studentId: { type: 'string' },
+              subjects: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    subjectId: { type: 'string' },
+                    obtainedMarks: { type: 'number' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Marks entered successfully' })
+  async bulkEnterMarks(
+    @Body()
+    body: {
+      examId: string;
+      classId: string;
+      section: string;
+      academicYearId: string;
+      marks: { studentId: string; subjects: { subjectId: string; obtainedMarks: number }[] }[];
+    },
+    @CurrentUser('school') schoolId: string,
+    @CurrentUser('id') userId: string,
+    @Req() req?: Request,
+  ) {
+    const context = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
+    return this.resultsService.bulkEnterMarks(
+      body.examId,
+      body.classId,
+      body.section,
+      body.academicYearId,
+      body.marks,
+      schoolId,
+      userId,
+      context,
+    );
+  }
+
+  @Get('analytics/student/:studentId')
+  @RequirePermissions('result:view')
+  @ApiOperation({ summary: 'Get comprehensive analytics for a student' })
+  @ApiParam({ name: 'studentId', description: 'Student ID' })
+  @ApiQuery({ name: 'academicYearId', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Analytics retrieved successfully' })
+  async getStudentComprehensiveAnalytics(
+    @Param('studentId') studentId: string,
+    @Query('academicYearId') academicYearId?: string,
+    @Req() req?: Request,
+  ) {
+    const context = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
+    return this.resultsService.getStudentComprehensiveAnalytics(
+      studentId,
+      academicYearId,
+      context,
+    );
+  }
+
+  @Get('analytics/class/:examId/:classId')
+  @RequirePermissions('result:view')
+  @ApiOperation({ summary: 'Get class analytics for an exam' })
+  @ApiParam({ name: 'examId', description: 'Exam ID' })
+  @ApiParam({ name: 'classId', description: 'Class ID' })
+  @ApiQuery({ name: 'section', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Analytics retrieved successfully' })
+  async getClassAnalytics(
+    @Param('examId') examId: string,
+    @Param('classId') classId: string,
+    @Query('section') section?: string,
+    @Req() req?: Request,
+  ) {
+    const context = {
+      schoolCode: (req as any)?.user?.schoolCode,
+      isTenantUser: (req as any)?.user?.isTenantUser,
+    };
+    return this.resultsService.getClassAnalytics(examId, classId, section, context);
   }
 }
 

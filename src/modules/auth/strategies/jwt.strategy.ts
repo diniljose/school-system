@@ -14,6 +14,8 @@ export interface JwtPayload {
   schoolCode: string;
   permissions: string[];
   isTenantUser: boolean;
+  profile?: string;
+  profileModel?: string;
 }
 
 @Injectable()
@@ -59,6 +61,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
+      sub: payload.sub,
       id: payload.sub,
       email: payload.email,
       role: payload.role,
@@ -67,6 +70,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       schoolCode: payload.schoolCode,
       permissions: payload.permissions || [],
       isTenantUser: payload.isTenantUser || false,
+      profile: payload.profile || user?.profile?.toString() || null,
+      profileModel: payload.profileModel || user?.profileModel || null,
     };
   }
 }

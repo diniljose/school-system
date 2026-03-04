@@ -19,6 +19,7 @@ import { AttendanceSchema } from './schemas/attendance.schema';
 import { ExamSchema } from './schemas/exam.schema';
 import { ResultSchema } from './schemas/result.schema';
 import { FeeSchema } from './schemas/fee.schema';
+import { FeeStructureSchema } from './schemas/fee-structure.schema';
 import { TimetableSchema } from './schemas/timetable.schema';
 import { NotificationSchema } from './schemas/notification.schema';
 import { AcademicYearSchema } from './schemas/academic-year.schema';
@@ -40,6 +41,7 @@ const TENANT_SCHEMAS: Record<string, Schema> = {
   Exam: ExamSchema,
   Result: ResultSchema,
   Fee: FeeSchema,
+  FeeStructure: FeeStructureSchema,
   Timetable: TimetableSchema,
   Notification: NotificationSchema,
   AcademicYear: AcademicYearSchema,

@@ -389,6 +389,19 @@ export class SchoolsService {
       const dbName = `school_${school.code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
       await this.tenantDatabaseService.createSchoolDatabase(school.code);
       
+      // Create the admin user in the tenant database
+      const { UserRole } = await import('../../common/enums/roles.enum');
+      await this.tenantDatabaseService.createTenantUser(school.code, {
+        firstName: school.pendingAdmin.firstName,
+        lastName: school.pendingAdmin.lastName,
+        email: school.pendingAdmin.email,
+        passwordHash: school.pendingAdmin.passwordHash,
+        role: UserRole.PRINCIPAL,
+        phone: school.pendingAdmin.phone,
+      });
+      
+      this.logger.log(`Created admin user ${school.pendingAdmin.email} for school ${school.code}`);
+      
       // Update school status
       school.status = SchoolStatus.ACTIVE;
       school.dbName = dbName;

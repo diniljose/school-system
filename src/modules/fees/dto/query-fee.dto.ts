@@ -4,11 +4,19 @@ import {
   IsMongoId,
   IsNumber,
   IsEnum,
+  IsString,
   Min,
   Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { FeeStatus } from '../../../common/enums/student-status.enum';
+
+export enum FeePeriodType {
+  MONTHLY = 'monthly',
+  QUARTERLY = 'quarterly',
+  HALF_YEARLY = 'half_yearly',
+  YEARLY = 'yearly',
+}
 
 export class QueryFeeDto {
   @ApiPropertyOptional()
@@ -26,10 +34,20 @@ export class QueryFeeDto {
   @IsMongoId()
   classId?: string;
 
+  @ApiPropertyOptional({ description: 'Section name (e.g., A, B, C)' })
+  @IsOptional()
+  @IsString()
+  section?: string;
+
   @ApiPropertyOptional({ enum: FeeStatus })
   @IsOptional()
   @IsEnum(FeeStatus)
   status?: FeeStatus;
+
+  @ApiPropertyOptional({ enum: FeePeriodType })
+  @IsOptional()
+  @IsEnum(FeePeriodType)
+  periodType?: FeePeriodType;
 
   @ApiPropertyOptional({ minimum: 1, maximum: 12 })
   @IsOptional()

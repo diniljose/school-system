@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Query,
+  Delete,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -24,6 +25,8 @@ import { ApplyDiscountDto } from './dto/apply-discount.dto';
 import { ApplyFineDto } from './dto/apply-fine.dto';
 import { GenerateFeesDto } from './dto/generate-fees.dto';
 import { QueryFeeDto } from './dto/query-fee.dto';
+import { CreateFeeStructureDto, UpdateFeeStructureDto } from './dto/fee-structure.dto';
+import { GenerateFeesFromStructureDto, BulkMarkPaidDto, MarkFeeAsPaidDto, CreateIndividualFeeDto, QueryFeeStructureDto } from './dto/fee-operations.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -68,6 +71,23 @@ export class FeesController {
     return this.feesService.generateMonthlyFees(generateFeesDto, schoolId);
   }
 
+  @Get('my-fees')
+  @ApiOperation({ summary: 'Get current user fees (for students)' })
+  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'partial', 'paid', 'overdue', 'waived'] })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Fees retrieved successfully' })
+  async getMyFees(
+    @CurrentUser('profile') profileId: string,
+    @CurrentUser('profileModel') profileModel: string,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @Query('status') status?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.feesService.getMyFees(profileId, profileModel, schoolCode, { status, page, limit });
+  }
+
   @Get()
   @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get all fees with filters and pagination' })
@@ -85,10 +105,10 @@ export class FeesController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Fees retrieved successfully' })
   async findAll(
-    @CurrentUser('school') schoolId: string,
+    @CurrentUser('schoolCode') schoolCode: string,
     @Query() query: QueryFeeDto,
   ) {
-    return this.feesService.findAll(schoolId, query);
+    return this.feesService.findAll(schoolCode, query);
   }
 
   @Get('pending')
@@ -219,6 +239,121 @@ export class FeesController {
     return this.feesService.getPaymentHistory(studentId);
   }
 
+  // =====================================================
+  // FEE STRUCTURE ENDPOINTS
+  // These must come BEFORE :id routes to avoid route conflicts
+  // =====================================================
+
+  @Post('structures')
+  @RequirePermissions('fee:create')
+  @ApiOperation({ summary: 'Create a new fee structure for a class/section' })
+  @ApiResponse({ status: 201, description: 'Fee structure created' })
+  async createFeeStructure(
+    @Body() dto: CreateFeeStructureDto,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.feesService.createFeeStructure(dto, schoolCode, userId);
+  }
+
+  @Get('structures')
+  @RequirePermissions('fee:view')
+  @ApiOperation({ summary: 'Get all fee structures' })
+  @ApiQuery({ name: 'academicYear', required: false })
+  @ApiQuery({ name: 'classId', required: false })
+  @ApiQuery({ name: 'section', required: false })
+  async getFeeStructures(
+    @CurrentUser('schoolCode') schoolCode: string,
+    @Query() query: QueryFeeStructureDto,
+  ) {
+    return this.feesService.getFeeStructures(schoolCode, query);
+  }
+
+  @Get('structures/:id')
+  @RequirePermissions('fee:view')
+  @ApiOperation({ summary: 'Get fee structure by ID' })
+  async getFeeStructureById(
+    @Param('id') id: string,
+    @CurrentUser('schoolCode') schoolCode: string,
+  ) {
+    return this.feesService.getFeeStructureById(id, schoolCode);
+  }
+
+  @Patch('structures/:id')
+  @RequirePermissions('fee:update')
+  @ApiOperation({ summary: 'Update fee structure' })
+  async updateFeeStructure(
+    @Param('id') id: string,
+    @Body() dto: UpdateFeeStructureDto,
+    @CurrentUser('schoolCode') schoolCode: string,
+  ) {
+    return this.feesService.updateFeeStructure(id, dto, schoolCode);
+  }
+
+  @Delete('structures/:id')
+  @RequirePermissions('fee:delete')
+  @ApiOperation({ summary: 'Delete fee structure' })
+  async deleteFeeStructure(
+    @Param('id') id: string,
+    @CurrentUser('schoolCode') schoolCode: string,
+  ) {
+    return this.feesService.deleteFeeStructure(id, schoolCode);
+  }
+
+  @Post('generate-from-structure')
+  @RequirePermissions('fee:create')
+  @ApiOperation({ summary: 'Generate fees for all students from a fee structure' })
+  async generateFeesFromStructure(
+    @Body() dto: GenerateFeesFromStructureDto,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.feesService.generateFeesFromStructure(dto, schoolCode, userId);
+  }
+
+  @Post('individual')
+  @RequirePermissions('fee:create')
+  @ApiOperation({ summary: 'Create individual fee for a specific student' })
+  async createIndividualFee(
+    @Body() dto: CreateIndividualFeeDto,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.feesService.createIndividualFee(dto, schoolCode, userId);
+  }
+
+  @Post('bulk-mark-paid')
+  @RequirePermissions('fee:update')
+  @ApiOperation({ summary: 'Bulk mark multiple fees as paid' })
+  async bulkMarkPaid(
+    @Body() dto: BulkMarkPaidDto,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.feesService.bulkMarkPaid(dto, schoolCode, userId);
+  }
+
+  @Get('class-fees')
+  @RequirePermissions('fee:view')
+  @ApiOperation({ summary: 'Get fees for a class/section with summary' })
+  @ApiQuery({ name: 'academicYear', required: false })
+  @ApiQuery({ name: 'classId', required: false })
+  @ApiQuery({ name: 'section', required: false })
+  @ApiQuery({ name: 'periodType', required: false })
+  @ApiQuery({ name: 'periodNumber', required: false })
+  @ApiQuery({ name: 'year', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  async getClassFees(
+    @CurrentUser('schoolCode') schoolCode: string,
+    @Query() query: any,
+  ) {
+    return this.feesService.getClassFees(schoolCode, query);
+  }
+
+  // =====================================================
+  // PARAMETERIZED :id ROUTES (must come after specific routes)
+  // =====================================================
+
   @Get(':id')
   @RequirePermissions('fee:view')
   @ApiOperation({ summary: 'Get a fee by ID' })
@@ -290,8 +425,9 @@ export class FeesController {
     @Param('id') id: string,
     @Body() paymentDto: RecordPaymentDto,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('schoolCode') schoolCode: string,
   ) {
-    return this.feesService.recordPayment(id, paymentDto, userId);
+    return this.feesService.recordPayment(id, paymentDto, userId, schoolCode);
   }
 
   @Post(':id/discount')
@@ -334,6 +470,18 @@ export class FeesController {
   @ApiResponse({ status: 400, description: 'Cannot waive fully paid fee' })
   async waiveFee(@Param('id') id: string, @Body('reason') reason: string) {
     return this.feesService.waiveFee(id, reason);
+  }
+
+  @Post(':id/mark-paid')
+  @RequirePermissions('fee:update')
+  @ApiOperation({ summary: 'Mark a fee as paid (partial or full)' })
+  async markFeeAsPaid(
+    @Param('id') id: string,
+    @Body() dto: MarkFeeAsPaidDto,
+    @CurrentUser('schoolCode') schoolCode: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.feesService.markFeeAsPaid(id, dto, schoolCode, userId);
   }
 }
 

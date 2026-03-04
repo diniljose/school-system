@@ -19,6 +19,10 @@ import {
   SchoolEvent,
   EventSchema,
 } from '../../database/schemas/event.schema';
+import { Exam, ExamSchema } from '../../database/schemas/exam.schema';
+import { User, UserSchema } from '../../database/schemas/user.schema';
+import { Parent, ParentSchema } from '../../database/schemas/parent.schema';
+import { Result, ResultSchema } from '../../database/schemas/result.schema';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Module({
@@ -32,6 +36,10 @@ import { TenantDatabaseService } from '../../database/tenant-database.service';
       { name: Fee.name, schema: FeeSchema },
       { name: Enrollment.name, schema: EnrollmentSchema },
       { name: SchoolEvent.name, schema: EventSchema },
+      { name: Exam.name, schema: ExamSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Parent.name, schema: ParentSchema },
+      { name: Result.name, schema: ResultSchema },
     ]),
   ],
   controllers: [DashboardController],

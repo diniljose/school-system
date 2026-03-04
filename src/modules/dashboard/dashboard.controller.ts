@@ -74,4 +74,73 @@ export class DashboardController {
       limit || 10,
     );
   }
+
+  @Get('student')
+  @ApiOperation({ summary: 'Get student dashboard data' })
+  @ApiResponse({
+    status: 200,
+    description: 'Student dashboard data retrieved successfully',
+  })
+  async getStudentDashboard(
+    @CurrentUser('school') schoolId: string,
+    @CurrentUser('profile') profileId: string,
+    @CurrentUser('profileModel') profileModel: string,
+    @Req() req?: any,
+  ) {
+    return this.dashboardService.getStudentDashboard(
+      schoolId,
+      profileId,
+      profileModel,
+      {
+        schoolCode: req.user?.schoolCode,
+        isTenantUser: req.user?.isTenantUser,
+      },
+    );
+  }
+
+  @Get('teacher')
+  @ApiOperation({ summary: 'Get teacher dashboard data' })
+  @ApiResponse({
+    status: 200,
+    description: 'Teacher dashboard data retrieved successfully',
+  })
+  async getTeacherDashboard(
+    @CurrentUser('school') schoolId: string,
+    @CurrentUser('profile') profileId: string,
+    @CurrentUser('profileModel') profileModel: string,
+    @Req() req?: any,
+  ) {
+    return this.dashboardService.getTeacherDashboard(
+      schoolId,
+      profileId,
+      profileModel,
+      {
+        schoolCode: req.user?.schoolCode,
+        isTenantUser: req.user?.isTenantUser,
+      },
+    );
+  }
+
+  @Get('parent')
+  @ApiOperation({ summary: 'Get parent dashboard data' })
+  @ApiResponse({
+    status: 200,
+    description: 'Parent dashboard data retrieved successfully',
+  })
+  async getParentDashboard(
+    @CurrentUser('school') schoolId: string,
+    @CurrentUser('profile') profileId: string,
+    @CurrentUser('profileModel') profileModel: string,
+    @Req() req?: any,
+  ) {
+    return this.dashboardService.getParentDashboard(
+      schoolId,
+      profileId,
+      profileModel,
+      {
+        schoolCode: req.user?.schoolCode,
+        isTenantUser: req.user?.isTenantUser,
+      },
+    );
+  }
 }

@@ -9,7 +9,12 @@ import { Attendance, AttendanceDocument } from '../../database/schemas/attendanc
 import { Fee, FeeDocument } from '../../database/schemas/fee.schema';
 import { Enrollment, EnrollmentDocument, EnrollmentStatus } from '../../database/schemas/enrollment.schema';
 import { SchoolEvent, EventDocument, EventStatus } from '../../database/schemas/event.schema';
+import { Exam, ExamDocument } from '../../database/schemas/exam.schema';
+import { User, UserDocument } from '../../database/schemas/user.schema';
+import { Parent, ParentDocument } from '../../database/schemas/parent.schema';
+import { Result, ResultDocument } from '../../database/schemas/result.schema';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
+import { FeeStatus } from '../../common/enums/student-status.enum';
 
 interface TenantContext {
   schoolCode?: string;
@@ -27,6 +32,10 @@ export class DashboardService {
     @InjectModel(Fee.name) private feeModel: Model<FeeDocument>,
     @InjectModel(Enrollment.name) private enrollmentModel: Model<EnrollmentDocument>,
     @InjectModel(SchoolEvent.name) private eventModel: Model<EventDocument>,
+    @InjectModel(Exam.name) private examModel: Model<ExamDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Parent.name) private parentModel: Model<ParentDocument>,
+    @InjectModel(Result.name) private resultModel: Model<ResultDocument>,
     private tenantDatabaseService: TenantDatabaseService,
   ) {}
 
@@ -108,6 +117,36 @@ export class DashboardService {
       );
     }
     return this.eventModel;
+  }
+
+  private async getExamModel(context?: TenantContext): Promise<Model<ExamDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ExamDocument>(
+        context.schoolCode,
+        'Exam',
+      );
+    }
+    return this.examModel;
+  }
+
+  private async getResultModel(context?: TenantContext): Promise<Model<ResultDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ResultDocument>(
+        context.schoolCode,
+        'Result',
+      );
+    }
+    return this.resultModel;
+  }
+
+  private async getParentModel(context?: TenantContext): Promise<Model<ParentDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<ParentDocument>(
+        context.schoolCode,
+        'Parent',
+      );
+    }
+    return this.parentModel;
   }
 
   async getDashboardStats(
@@ -420,6 +459,349 @@ export class DashboardService {
     return {
       success: true,
       data: limitedActivities,
+    };
+  }
+
+  /**
+   * Get student dashboard data
+   * Returns attendance rate, current grade, upcoming exams count, fee status, and pending fee amount
+   */
+  async getStudentDashboard(
+    schoolId: string,
+    profileId: string,
+    profileModel: string,
+    context?: TenantContext,
+  ) {
+    // Only process if user is a student
+    if (profileModel !== 'Student' || !profileId) {
+      return {
+        success: true,
+        data: {
+          attendanceRate: null,
+          currentGrade: null,
+          upcomingExams: 0,
+          feeStatus: 'N/A',
+          pendingFeeAmount: 0,
+        },
+      };
+    }
+
+    const studentModel = await this.getStudentModel(context);
+    const attendanceModel = await this.getAttendanceModel(context);
+    const feeModel = await this.getFeeModel(context);
+    const examModel = await this.getExamModel(context);
+    const resultModel = await this.getResultModel(context);
+    const enrollmentModel = await this.getEnrollmentModel(context);
+
+    const studentId = new Types.ObjectId(profileId);
+
+    // Get student details with current class
+    const student = await studentModel.findById(studentId).populate('currentClass');
+    if (!student) {
+      return { success: false, message: 'Student not found' };
+    }
+
+    // Get current enrollment
+    const enrollment = await enrollmentModel.findOne({
+      student: studentId,
+      status: EnrollmentStatus.ACTIVE,
+      isActive: true,
+    }).populate('class');
+
+    const classId = enrollment?.class?._id || student.currentClass;
+    const section = enrollment?.section || (student as any).currentSection;
+
+    // Calculate attendance rate (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const attendanceRecords = await attendanceModel.find({
+      student: studentId,
+      date: { $gte: thirtyDaysAgo },
+    });
+
+    let attendanceRate: number | null = null;
+    if (attendanceRecords.length > 0) {
+      const presentCount = attendanceRecords.filter(
+        (a: any) => a.status === 'present' || a.status === 'late'
+      ).length;
+      attendanceRate = Math.round((presentCount / attendanceRecords.length) * 100);
+    }
+
+    // Get current grade from latest result
+    let currentGrade: string | null = null;
+    const latestResult = await resultModel
+      .findOne({ student: studentId })
+      .sort({ createdAt: -1 })
+      .select('grade percentage');
+    
+    if (latestResult) {
+      currentGrade = (latestResult as any).grade || 
+        (latestResult as any).percentage ? `${Math.round((latestResult as any).percentage)}%` : null;
+    }
+
+    // Count upcoming exams for student's class
+    const now = new Date();
+    const upcomingExamsFilter: any = {
+      startDate: { $gte: now },
+      status: { $in: ['scheduled', 'upcoming'] },
+      isActive: true,
+    };
+    
+    if (classId) {
+      upcomingExamsFilter.$or = [
+        { classes: classId },
+        { 'schedule.class': classId },
+      ];
+    }
+
+    const upcomingExams = await examModel.countDocuments(upcomingExamsFilter);
+
+    // Get fee status and pending amount
+    const fees = await feeModel.find({
+      student: studentId,
+      status: { $in: [FeeStatus.PENDING, FeeStatus.PARTIAL, FeeStatus.OVERDUE] },
+    });
+
+    let feeStatus = 'Paid';
+    let pendingFeeAmount = 0;
+
+    if (fees.length > 0) {
+      const hasOverdue = fees.some((f: any) => f.status === FeeStatus.OVERDUE);
+      pendingFeeAmount = fees.reduce((sum: number, f: any) => sum + (f.dueAmount || f.balanceAmount || 0), 0);
+      
+      if (hasOverdue) {
+        feeStatus = 'Overdue';
+      } else {
+        feeStatus = 'Pending';
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        attendanceRate,
+        currentGrade,
+        upcomingExams,
+        feeStatus,
+        pendingFeeAmount,
+        studentId: profileId,
+        className: (enrollment?.class as any)?.name || null,
+        section,
+      },
+    };
+  }
+
+  /**
+   * Get teacher dashboard data
+   */
+  async getTeacherDashboard(
+    schoolId: string,
+    profileId: string,
+    profileModel: string,
+    context?: TenantContext,
+  ) {
+    if (profileModel !== 'Teacher' || !profileId) {
+      return {
+        success: true,
+        data: {
+          classCount: 0,
+          totalStudents: 0,
+          subjectCount: 0,
+          todayAttendance: null,
+          presentToday: 0,
+          pendingEvaluations: 0,
+          pendingApprovals: 0,
+        },
+      };
+    }
+
+    const teacherModel = await this.getTeacherModel(context);
+    const classModel = await this.getClassModel(context);
+    const studentModel = await this.getStudentModel(context);
+    const attendanceModel = await this.getAttendanceModel(context);
+
+    const teacherId = new Types.ObjectId(profileId);
+
+    // Get teacher with assigned classes
+    const teacher = await teacherModel.findById(teacherId);
+    if (!teacher) {
+      return { success: false, message: 'Teacher not found' };
+    }
+
+    // Count classes where teacher is assigned
+    const assignedClasses = await classModel.find({
+      $or: [
+        { classTeacher: teacherId },
+        { 'sections.classTeacher': teacherId },
+        { teachers: teacherId },
+      ],
+    });
+
+    const classCount = assignedClasses.length;
+    const classIds = assignedClasses.map(c => c._id);
+
+    // Count students in teacher's classes
+    let totalStudents = 0;
+    if (classIds.length > 0) {
+      totalStudents = await studentModel.countDocuments({
+        currentClass: { $in: classIds },
+        status: 'active',
+      });
+    }
+
+    // Get subject count (assuming teacher has subjects field)
+    const subjectCount = (teacher as any).subjects?.length || 0;
+
+    // Get today's attendance for teacher's classes
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    let todayAttendance: number | null = null;
+    let presentToday = 0;
+
+    if (classIds.length > 0) {
+      const todayAttendanceRecords = await attendanceModel.find({
+        class: { $in: classIds },
+        date: { $gte: today, $lte: todayEnd },
+      });
+
+      if (todayAttendanceRecords.length > 0) {
+        presentToday = todayAttendanceRecords.filter(
+          (a: any) => a.status === 'present' || a.status === 'late'
+        ).length;
+        todayAttendance = Math.round((presentToday / todayAttendanceRecords.length) * 100);
+      }
+    }
+
+    // Count pending student approvals (for class teachers)
+    const pendingApprovals = await studentModel.countDocuments({
+      currentClass: { $in: classIds },
+      status: 'pending',
+    });
+
+    return {
+      success: true,
+      data: {
+        classCount,
+        totalStudents,
+        subjectCount,
+        todayAttendance,
+        presentToday,
+        pendingEvaluations: 0, // Would need result module integration
+        pendingApprovals,
+        schedule: [], // Would need timetable integration
+      },
+    };
+  }
+
+  /**
+   * Get parent dashboard data
+   */
+  async getParentDashboard(
+    schoolId: string,
+    profileId: string,
+    profileModel: string,
+    context?: TenantContext,
+  ) {
+    if (profileModel !== 'Parent' || !profileId) {
+      return {
+        success: true,
+        data: {
+          children: [],
+          totalDue: 0,
+          totalPaid: 0,
+          pending: 0,
+        },
+      };
+    }
+
+    const parentModel = await this.getParentModel(context);
+    const studentModel = await this.getStudentModel(context);
+    const feeModel = await this.getFeeModel(context);
+    const attendanceModel = await this.getAttendanceModel(context);
+    const resultModel = await this.getResultModel(context);
+
+    const parentId = new Types.ObjectId(profileId);
+
+    // Get parent with children
+    const parent = await parentModel.findById(parentId).populate('children');
+    if (!parent) {
+      return { success: false, message: 'Parent not found' };
+    }
+
+    const childrenIds = (parent as any).children?.map((c: any) => c._id || c) || [];
+
+    // Get children details with their stats
+    const children = await Promise.all(
+      childrenIds.map(async (childId: Types.ObjectId) => {
+        const student = await studentModel
+          .findById(childId)
+          .populate('currentClass')
+          .select('firstName lastName currentClass currentSection');
+
+        if (!student) return null;
+
+        // Get attendance rate
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const attendanceRecords = await attendanceModel.find({
+          student: childId,
+          date: { $gte: thirtyDaysAgo },
+        });
+
+        let attendance = 0;
+        if (attendanceRecords.length > 0) {
+          const presentCount = attendanceRecords.filter(
+            (a: any) => a.status === 'present' || a.status === 'late'
+          ).length;
+          attendance = Math.round((presentCount / attendanceRecords.length) * 100);
+        }
+
+        // Get latest grade
+        const latestResult = await resultModel
+          .findOne({ student: childId })
+          .sort({ createdAt: -1 })
+          .select('grade percentage rank');
+
+        return {
+          id: (student as any)._id.toString(),
+          name: `${student.firstName} ${student.lastName}`,
+          class: (student.currentClass as any)?.name || 'N/A',
+          section: (student as any).currentSection || '',
+          attendance,
+          grade: (latestResult as any)?.grade || '-',
+          rank: (latestResult as any)?.rank || '-',
+        };
+      })
+    );
+
+    // Calculate fee totals
+    let totalDue = 0;
+    let totalPaid = 0;
+
+    if (childrenIds.length > 0) {
+      const allFees = await feeModel.find({
+        student: { $in: childrenIds },
+      });
+
+      allFees.forEach((fee: any) => {
+        totalDue += fee.netAmount || fee.totalAmount || 0;
+        totalPaid += fee.paidAmount || 0;
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        children: children.filter(Boolean),
+        totalDue,
+        totalPaid,
+        pending: totalDue - totalPaid,
+      },
     };
   }
 }

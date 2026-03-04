@@ -3,10 +3,12 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Fee, FeeDocument } from '../../database/schemas/fee.schema';
+import { Fee, FeeDocument, FeePeriodType } from '../../database/schemas/fee.schema';
+import { FeeStructure, FeeStructureDocument, BillingCycle, SplitOption } from '../../database/schemas/fee-structure.schema';
 import {
   Student,
   StudentDocument,
@@ -23,16 +25,22 @@ import { ApplyDiscountDto } from './dto/apply-discount.dto';
 import { ApplyFineDto } from './dto/apply-fine.dto';
 import { GenerateFeesDto } from './dto/generate-fees.dto';
 import { QueryFeeDto } from './dto/query-fee.dto';
+import { CreateFeeStructureDto, UpdateFeeStructureDto } from './dto/fee-structure.dto';
+import { GenerateFeesFromStructureDto, BulkMarkPaidDto, MarkFeeAsPaidDto, CreateIndividualFeeDto, QueryFeeStructureDto } from './dto/fee-operations.dto';
 import { FeeStatus } from '../../common/enums/student-status.enum';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Injectable()
 export class FeesService {
+  private readonly logger = new Logger(FeesService.name);
+  
   constructor(
     @InjectModel(Fee.name) private feeModel: Model<FeeDocument>,
     @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(AcademicYear.name)
     private academicYearModel: Model<AcademicYearDocument>,
+    private tenantDatabaseService: TenantDatabaseService,
   ) {}
 
   async create(createFeeDto: CreateFeeDto, schoolId: string) {
@@ -280,12 +288,14 @@ export class FeesService {
     }
   }
 
-  async findAll(schoolId: string, query: QueryFeeDto) {
+  async findAll(schoolCode: string, query: QueryFeeDto) {
     const {
       studentId,
       academicYearId,
       classId,
+      section,
       status,
+      periodType,
       month,
       year,
       page = 1,
@@ -293,7 +303,17 @@ export class FeesService {
     } = query;
     const skip = (page - 1) * limit;
 
-    const filter: any = { school: new Types.ObjectId(schoolId) };
+    // Use tenant-specific database
+    const FeeModel = await this.tenantDatabaseService.getTenantModel<FeeDocument>(
+      schoolCode,
+      'Fee',
+    );
+    const StudentModel = await this.tenantDatabaseService.getTenantModel<StudentDocument>(
+      schoolCode,
+      'Student',
+    );
+
+    const filter: any = {};
 
     if (studentId) {
       filter.student = new Types.ObjectId(studentId);
@@ -307,6 +327,10 @@ export class FeesService {
       filter.status = status;
     }
 
+    if (periodType) {
+      filter.periodType = periodType;
+    }
+
     if (month !== undefined) {
       filter.month = month;
     }
@@ -315,12 +339,18 @@ export class FeesService {
       filter.year = year;
     }
 
+    // Filter by class and optionally section
     if (classId) {
-      const students = await this.studentModel
-        .find({
-          currentClass: new Types.ObjectId(classId),
-          school: new Types.ObjectId(schoolId),
-        })
+      const studentFilter: any = {
+        currentClass: new Types.ObjectId(classId),
+      };
+      
+      if (section) {
+        studentFilter.currentSection = section;
+      }
+
+      const students = await StudentModel
+        .find(studentFilter)
         .select('_id')
         .exec();
 
@@ -328,15 +358,15 @@ export class FeesService {
     }
 
     const [fees, total] = await Promise.all([
-      this.feeModel
+      FeeModel
         .find(filter)
-        .populate('student', 'firstName lastName admissionNumber rollNumber')
+        .populate('student', 'firstName lastName admissionNumber rollNumber currentClass currentSection')
         .populate('academicYear', 'name year')
         .sort({ year: -1, month: -1, dueDate: -1 })
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.feeModel.countDocuments(filter),
+      FeeModel.countDocuments(filter),
     ]);
 
     return {
@@ -345,6 +375,88 @@ export class FeesService {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Get fees for the currently logged-in student
+   */
+  async getMyFees(
+    profileId: string,
+    profileModel: string,
+    schoolCode: string,
+    query: { status?: string; page?: number; limit?: number },
+  ) {
+    // Only allow students to access their own fees
+    if (profileModel !== 'Student' || !profileId) {
+      return {
+        success: true,
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+        summary: { pending: 0, collected: 0, overdue: 0, total: 0 },
+      };
+    }
+
+    const { status, page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+    const studentId = new Types.ObjectId(profileId);
+
+    // Get fee model (tenant-aware if needed)
+    let feeModel = this.feeModel;
+    if (schoolCode) {
+      try {
+        feeModel = await this.tenantDatabaseService.getTenantModel<FeeDocument>(
+          schoolCode,
+          'Fee',
+        );
+      } catch {
+        // Fall back to main model
+      }
+    }
+
+    const filter: any = { student: studentId };
+    if (status) {
+      filter.status = status;
+    }
+
+    const [fees, total] = await Promise.all([
+      feeModel
+        .find(filter)
+        .populate('student', 'firstName lastName admissionNumber')
+        .populate('class', 'name')
+        .populate('academicYear', 'name year')
+        .sort({ year: -1, periodNumber: -1, dueDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      feeModel.countDocuments(filter),
+    ]);
+
+    // Calculate summary
+    const allFees = await feeModel.find({ student: studentId });
+    let pending = 0, collected = 0, overdue = 0, totalAmount = 0;
+    
+    allFees.forEach((f: any) => {
+      totalAmount += f.totalAmount || 0;
+      collected += f.paidAmount || 0;
+      if (f.status === 'overdue') {
+        overdue += f.dueAmount || f.balanceAmount || 0;
+      } else if (f.status === 'pending' || f.status === 'partial') {
+        pending += f.dueAmount || f.balanceAmount || 0;
+      }
+    });
+
+    return {
+      success: true,
+      data: fees,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / limit),
+      summary: { pending, collected, overdue, total: totalAmount },
     };
   }
 
@@ -455,12 +567,19 @@ export class FeesService {
     feeId: string,
     paymentDto: RecordPaymentDto,
     receivedBy: string,
+    schoolCode: string,
   ) {
     if (!Types.ObjectId.isValid(feeId)) {
       throw new BadRequestException('Invalid fee ID');
     }
 
-    const fee = await this.feeModel.findById(feeId).exec();
+    // Use tenant-specific database
+    const FeeModel = await this.tenantDatabaseService.getTenantModel<FeeDocument>(
+      schoolCode,
+      'Fee',
+    );
+
+    const fee = await FeeModel.findById(feeId).exec();
 
     if (!fee) {
       throw new NotFoundException('Fee not found');
@@ -919,5 +1038,599 @@ export class FeesService {
     }
 
     return `FEE-${dateStr}-${sequence.toString().padStart(4, '0')}`;
+  }
+
+  // =====================================================
+  // FEE STRUCTURE METHODS (New)
+  // =====================================================
+
+  /**
+   * Create a new fee structure for a class/section
+   */
+  async createFeeStructure(
+    dto: CreateFeeStructureDto,
+    schoolCode: string,
+    userId: string,
+  ) {
+    const FeeStructureModel = await this.tenantDatabaseService.getTenantModel<FeeStructureDocument>(
+      schoolCode,
+      'FeeStructure',
+    );
+
+    // Calculate total amount
+    const totalAmount = dto.components.reduce((sum, comp) => sum + comp.amount, 0);
+
+    const structure = new FeeStructureModel({
+      academicYear: new Types.ObjectId(dto.academicYear),
+      class: new Types.ObjectId(dto.class),
+      section: dto.section || null,
+      name: dto.name,
+      billingCycle: dto.billingCycle,
+      splitOption: dto.billingCycle === BillingCycle.YEARLY ? dto.splitOption : SplitOption.NO_SPLIT,
+      components: dto.components,
+      totalAmount,
+      dueDays: dto.dueDays || [10],
+      lateFeePenalty: dto.lateFeePenalty || 0,
+      gracePeriodDays: dto.gracePeriodDays || 5,
+      description: dto.description,
+      isActive: true,
+      createdBy: new Types.ObjectId(userId),
+    });
+
+    await structure.save();
+    this.logger.log(`Created fee structure ${dto.name} for class ${dto.class}`);
+    return structure;
+  }
+
+  /**
+   * Get all fee structures for a school
+   */
+  async getFeeStructures(schoolCode: string, query: QueryFeeStructureDto) {
+    const FeeStructureModel = await this.tenantDatabaseService.getTenantModel<FeeStructureDocument>(
+      schoolCode,
+      'FeeStructure',
+    );
+
+    const filter: any = {};
+    if (query.academicYear) filter.academicYear = new Types.ObjectId(query.academicYear);
+    if (query.classId) filter.class = new Types.ObjectId(query.classId);
+    if (query.section) filter.section = query.section;
+    if (query.isActive !== undefined) filter.isActive = query.isActive;
+
+    const structures = await FeeStructureModel.find(filter)
+      .populate('academicYear', 'name year')
+      .populate('class', 'name grade')
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return structures;
+  }
+
+  /**
+   * Get fee structure by ID
+   */
+  async getFeeStructureById(id: string, schoolCode: string) {
+    const FeeStructureModel = await this.tenantDatabaseService.getTenantModel<FeeStructureDocument>(
+      schoolCode,
+      'FeeStructure',
+    );
+
+    const structure = await FeeStructureModel.findById(id)
+      .populate('academicYear', 'name year')
+      .populate('class', 'name grade')
+      .exec();
+
+    if (!structure) {
+      throw new NotFoundException('Fee structure not found');
+    }
+
+    return structure;
+  }
+
+  /**
+   * Update fee structure
+   */
+  async updateFeeStructure(
+    id: string,
+    dto: UpdateFeeStructureDto,
+    schoolCode: string,
+  ) {
+    const FeeStructureModel = await this.tenantDatabaseService.getTenantModel<FeeStructureDocument>(
+      schoolCode,
+      'FeeStructure',
+    );
+
+    const updateData: any = { ...dto };
+    if (dto.components) {
+      updateData.totalAmount = dto.components.reduce((sum, comp) => sum + comp.amount, 0);
+    }
+
+    const structure = await FeeStructureModel.findByIdAndUpdate(id, updateData, { new: true })
+      .populate('academicYear', 'name year')
+      .populate('class', 'name grade')
+      .exec();
+
+    if (!structure) {
+      throw new NotFoundException('Fee structure not found');
+    }
+
+    return structure;
+  }
+
+  /**
+   * Delete fee structure
+   */
+  async deleteFeeStructure(id: string, schoolCode: string) {
+    const FeeStructureModel = await this.tenantDatabaseService.getTenantModel<FeeStructureDocument>(
+      schoolCode,
+      'FeeStructure',
+    );
+
+    const result = await FeeStructureModel.findByIdAndDelete(id).exec();
+    if (!result) {
+      throw new NotFoundException('Fee structure not found');
+    }
+    return { message: 'Fee structure deleted successfully' };
+  }
+
+  /**
+   * Generate fees for all students in a class/section from a fee structure
+   */
+  async generateFeesFromStructure(
+    dto: GenerateFeesFromStructureDto,
+    schoolCode: string,
+    userId: string,
+  ) {
+    const FeeStructureModel = await this.tenantDatabaseService.getTenantModel<FeeStructureDocument>(
+      schoolCode,
+      'FeeStructure',
+    );
+    const FeeModel = await this.tenantDatabaseService.getTenantModel<FeeDocument>(
+      schoolCode,
+      'Fee',
+    );
+    const StudentModel = await this.tenantDatabaseService.getTenantModel<StudentDocument>(
+      schoolCode,
+      'Student',
+    );
+
+    // Get the fee structure
+    const structure = await FeeStructureModel.findById(dto.feeStructureId).exec();
+    if (!structure) {
+      throw new NotFoundException('Fee structure not found');
+    }
+
+    // Get students in this class/section
+    const studentFilter: any = { currentClass: structure.class };
+    if (structure.section) {
+      studentFilter.currentSection = structure.section;
+    }
+    const students = await StudentModel.find(studentFilter).exec();
+
+    if (students.length === 0) {
+      throw new BadRequestException('No students found in this class/section');
+    }
+
+    // Determine which periods to generate
+    const periodsToGenerate: number[] = [];
+    if (dto.generateAllPeriods) {
+      const periodsCount = this.getPeriodsCountForType(dto.periodType);
+      for (let i = 1; i <= periodsCount; i++) {
+        periodsToGenerate.push(i);
+      }
+    } else {
+      periodsToGenerate.push(dto.periodNumber);
+    }
+
+    const totalCreated: any[] = [];
+    const totalErrors: any[] = [];
+
+    for (const periodNumber of periodsToGenerate) {
+      // Generate period label if not provided
+      const periodLabel = this.generatePeriodLabel(dto.periodType, periodNumber, dto.year);
+
+      // Calculate due date
+      const dueDate = this.calculateDueDate(dto.periodType, periodNumber, dto.year, structure.dueDays[0] || 10);
+
+      for (const student of students) {
+        try {
+          // Check if fee already exists for this period
+          const existingFee = await FeeModel.findOne({
+            student: student._id,
+            periodType: dto.periodType,
+            periodNumber: periodNumber,
+            year: dto.year,
+          }).exec();
+
+          if (existingFee) {
+            totalErrors.push({
+              studentId: student._id.toString(),
+              studentName: `${student.firstName} ${student.lastName}`,
+              periodNumber,
+              error: 'Fee already exists for this period',
+            });
+            continue;
+          }
+
+          // Create fee components from structure
+          const feeComponents = structure.components.map((comp: any) => ({
+            name: comp.name,
+            amount: comp.amount,
+            dueDate,
+            discount: 0,
+            discountReason: '',
+            fine: 0,
+            fineReason: '',
+          }));
+
+          const totalAmount = structure.totalAmount;
+          const netAmount = totalAmount;
+
+          const fee = new FeeModel({
+            academicYear: structure.academicYear,
+            student: student._id,
+            class: structure.class,
+            section: structure.section,
+            feeStructure: structure._id,
+            periodType: dto.periodType,
+            periodNumber: periodNumber,
+            periodLabel,
+            month: this.getPeriodStartMonth(dto.periodType, periodNumber),
+            year: dto.year,
+            feeComponents,
+            totalAmount,
+            discount: 0,
+            fine: 0,
+            netAmount,
+            paidAmount: 0,
+            balanceAmount: netAmount,
+            status: FeeStatus.PENDING,
+            dueDate,
+            remarks: dto.remarks || '',
+            isCustom: false,
+          });
+
+          await fee.save();
+          totalCreated.push(fee);
+        } catch (error) {
+          totalErrors.push({
+            studentId: student._id.toString(),
+            studentName: `${student.firstName} ${student.lastName}`,
+            periodNumber,
+            error: error.message,
+          });
+        }
+      }
+    }
+
+    this.logger.log(`Generated ${totalCreated.length} fees from structure ${structure.name} for ${periodsToGenerate.length} period(s)`);
+    return {
+      success: totalCreated.length,
+      totalSuccess: totalCreated.length,
+      failed: totalErrors.length,
+      totalStudents: students.length,
+      periodsGenerated: periodsToGenerate.length,
+      errors: totalErrors,
+    };
+  }
+
+  /**
+   * Get the number of periods for a given period type
+   */
+  private getPeriodsCountForType(periodType: FeePeriodType): number {
+    switch (periodType) {
+      case FeePeriodType.MONTHLY:
+        return 12;
+      case FeePeriodType.QUARTERLY:
+        return 4;
+      case FeePeriodType.HALF_YEARLY:
+        return 2;
+      case FeePeriodType.YEARLY:
+        return 1;
+      default:
+        return 1;
+    }
+  }
+
+  /**
+   * Create individual fee for a specific student
+   */
+  async createIndividualFee(
+    dto: CreateIndividualFeeDto,
+    schoolCode: string,
+    userId: string,
+  ) {
+    const FeeModel = await this.tenantDatabaseService.getTenantModel<FeeDocument>(
+      schoolCode,
+      'Fee',
+    );
+    const StudentModel = await this.tenantDatabaseService.getTenantModel<StudentDocument>(
+      schoolCode,
+      'Student',
+    );
+
+    // Verify student exists
+    const student = await StudentModel.findById(dto.studentId).exec();
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Check for existing fee
+    const existingFee = await FeeModel.findOne({
+      student: new Types.ObjectId(dto.studentId),
+      periodType: dto.periodType,
+      periodNumber: dto.periodNumber,
+      year: dto.year,
+    }).exec();
+
+    if (existingFee) {
+      throw new ConflictException('Fee already exists for this student and period');
+    }
+
+    const periodLabel = dto.periodLabel || this.generatePeriodLabel(dto.periodType, dto.periodNumber, dto.year);
+    const dueDate = this.calculateDueDate(dto.periodType, dto.periodNumber, dto.year, 10);
+
+    const feeComponents = dto.components.map((comp) => ({
+      name: comp.name,
+      amount: comp.amount,
+      dueDate,
+      discount: 0,
+      discountReason: '',
+      fine: 0,
+      fineReason: '',
+    }));
+
+    const totalAmount = dto.components.reduce((sum, c) => sum + c.amount, 0);
+    const discount = dto.discount || 0;
+    const netAmount = totalAmount - discount;
+
+    const fee = new FeeModel({
+      academicYear: new Types.ObjectId(dto.academicYear),
+      student: new Types.ObjectId(dto.studentId),
+      class: student.currentClass,
+      section: student.currentSection,
+      periodType: dto.periodType,
+      periodNumber: dto.periodNumber,
+      periodLabel,
+      month: this.getPeriodStartMonth(dto.periodType, dto.periodNumber),
+      year: dto.year,
+      feeComponents,
+      totalAmount,
+      discount,
+      fine: 0,
+      netAmount,
+      paidAmount: 0,
+      balanceAmount: netAmount,
+      status: FeeStatus.PENDING,
+      dueDate,
+      remarks: dto.remarks || dto.discountReason || '',
+      isCustom: true,
+    });
+
+    await fee.save();
+    return fee;
+  }
+
+  /**
+   * Mark a fee as paid (partial or full)
+   */
+  async markFeeAsPaid(
+    feeId: string,
+    dto: MarkFeeAsPaidDto,
+    schoolCode: string,
+    userId: string,
+  ) {
+    const FeeModel = await this.tenantDatabaseService.getTenantModel<FeeDocument>(
+      schoolCode,
+      'Fee',
+    );
+
+    const fee = await FeeModel.findById(feeId).exec();
+    if (!fee) {
+      throw new NotFoundException('Fee not found');
+    }
+
+    if (fee.status === FeeStatus.PAID) {
+      throw new BadRequestException('Fee is already fully paid');
+    }
+
+    const amount = dto.markFullyPaid ? fee.balanceAmount : dto.amount;
+    
+    if (amount > fee.balanceAmount) {
+      throw new BadRequestException(`Amount exceeds balance (${fee.balanceAmount})`);
+    }
+
+    const receiptNumber = await this.generateReceiptNumber();
+
+    const payment = {
+      amount,
+      date: new Date(),
+      method: dto.paymentMethod,
+      transactionId: dto.transactionId || '',
+      receiptNumber,
+      receivedBy: new Types.ObjectId(userId),
+      remarks: dto.remarks || '',
+    };
+
+    fee.payments.push(payment);
+    fee.paidAmount += amount;
+    fee.balanceAmount = fee.netAmount - fee.paidAmount;
+    fee.markedPaidBy = new Types.ObjectId(userId);
+    fee.markedPaidAt = new Date();
+
+    if (fee.balanceAmount <= 0) {
+      fee.status = FeeStatus.PAID;
+      fee.balanceAmount = 0;
+    } else if (fee.paidAmount > 0) {
+      fee.status = FeeStatus.PARTIAL;
+    }
+
+    await fee.save();
+
+    return fee.populate('student', 'firstName lastName admissionNumber');
+  }
+
+  /**
+   * Bulk mark fees as paid
+   */
+  async bulkMarkPaid(
+    dto: BulkMarkPaidDto,
+    schoolCode: string,
+    userId: string,
+  ) {
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as any[],
+    };
+
+    for (const feeId of dto.feeIds) {
+      try {
+        await this.markFeeAsPaid(
+          feeId,
+          {
+            amount: 0,
+            paymentMethod: dto.paymentMethod,
+            transactionId: dto.transactionId,
+            remarks: dto.remarks,
+            markFullyPaid: true,
+          },
+          schoolCode,
+          userId,
+        );
+        results.success++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ feeId, error: error.message });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Get fees for a class/section with filters
+   */
+  async getClassFees(
+    schoolCode: string,
+    query: {
+      academicYear?: string;
+      classId?: string;
+      section?: string;
+      periodType?: FeePeriodType;
+      periodNumber?: number;
+      year?: number;
+      status?: FeeStatus;
+      page?: number;
+      limit?: number;
+    },
+  ) {
+    const FeeModel = await this.tenantDatabaseService.getTenantModel<FeeDocument>(
+      schoolCode,
+      'Fee',
+    );
+
+    const filter: any = {};
+    if (query.academicYear) filter.academicYear = new Types.ObjectId(query.academicYear);
+    if (query.classId) filter.class = new Types.ObjectId(query.classId);
+    if (query.section) filter.section = query.section;
+    if (query.periodType) filter.periodType = query.periodType;
+    if (query.periodNumber) filter.periodNumber = query.periodNumber;
+    if (query.year) filter.year = query.year;
+    if (query.status) filter.status = query.status;
+
+    const page = query.page || 1;
+    const limit = query.limit || 50;
+    const skip = (page - 1) * limit;
+
+    const [fees, total] = await Promise.all([
+      FeeModel.find(filter)
+        .populate('student', 'firstName lastName admissionNumber rollNumber')
+        .populate('class', 'name grade')
+        .sort({ 'student.firstName': 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      FeeModel.countDocuments(filter),
+    ]);
+
+    // Calculate summary
+    const allFees = await FeeModel.find(filter).exec();
+    const summary = {
+      totalStudents: allFees.length,
+      totalAmount: allFees.reduce((sum, f) => sum + f.netAmount, 0),
+      totalPaid: allFees.reduce((sum, f) => sum + f.paidAmount, 0),
+      totalPending: allFees.reduce((sum, f) => sum + f.balanceAmount, 0),
+      paidCount: allFees.filter(f => f.status === FeeStatus.PAID).length,
+      partialCount: allFees.filter(f => f.status === FeeStatus.PARTIAL).length,
+      pendingCount: allFees.filter(f => f.status === FeeStatus.PENDING).length,
+      overdueCount: allFees.filter(f => f.status === FeeStatus.OVERDUE).length,
+    };
+
+    return {
+      data: fees,
+      summary,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // Helper methods
+  private generatePeriodLabel(periodType: FeePeriodType, periodNumber: number, year: number): string {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    switch (periodType) {
+      case FeePeriodType.MONTHLY:
+        return `${months[periodNumber - 1]} ${year}`;
+      case FeePeriodType.QUARTERLY:
+        const quarterNames = ['Q1 (Jan-Mar)', 'Q2 (Apr-Jun)', 'Q3 (Jul-Sep)', 'Q4 (Oct-Dec)'];
+        return `${quarterNames[periodNumber - 1]} ${year}`;
+      case FeePeriodType.HALF_YEARLY:
+        return periodNumber === 1 ? `H1 (Jan-Jun) ${year}` : `H2 (Jul-Dec) ${year}`;
+      case FeePeriodType.YEARLY:
+        return `${year}-${(year + 1).toString().slice(-2)}`;
+      default:
+        return `${periodNumber}/${year}`;
+    }
+  }
+
+  private calculateDueDate(periodType: FeePeriodType, periodNumber: number, year: number, dueDay: number): Date {
+    let month: number;
+    
+    switch (periodType) {
+      case FeePeriodType.MONTHLY:
+        month = periodNumber - 1; // 0-indexed
+        break;
+      case FeePeriodType.QUARTERLY:
+        month = (periodNumber - 1) * 3; // Q1=0, Q2=3, Q3=6, Q4=9
+        break;
+      case FeePeriodType.HALF_YEARLY:
+        month = periodNumber === 1 ? 0 : 6;
+        break;
+      case FeePeriodType.YEARLY:
+        month = 3; // April (start of academic year typically)
+        break;
+      default:
+        month = 0;
+    }
+    
+    return new Date(year, month, Math.min(dueDay, 28));
+  }
+
+  private getPeriodStartMonth(periodType: FeePeriodType, periodNumber: number): number {
+    switch (periodType) {
+      case FeePeriodType.MONTHLY:
+        return periodNumber;
+      case FeePeriodType.QUARTERLY:
+        return (periodNumber - 1) * 3 + 1;
+      case FeePeriodType.HALF_YEARLY:
+        return periodNumber === 1 ? 1 : 7;
+      case FeePeriodType.YEARLY:
+        return 1;
+      default:
+        return 1;
+    }
   }
 }

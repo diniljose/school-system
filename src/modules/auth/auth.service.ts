@@ -1634,6 +1634,8 @@ export class AuthService {
       schoolCode: school?.code || null,
       permissions: permissions,
       isTenantUser: isFromTenantDb,
+      profile: user.profile?.toString() || null,
+      profileModel: user.profileModel || null,
     };
 
     const accessToken = this.jwtService.sign(payload);

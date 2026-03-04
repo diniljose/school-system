@@ -6,10 +6,12 @@ import { Result, ResultSchema } from '../../database/schemas/result.schema';
 import { Exam, ExamSchema } from '../../database/schemas/exam.schema';
 import { Student, StudentSchema } from '../../database/schemas/student.schema';
 import { Class, ClassSchema } from '../../database/schemas/class.schema';
+import { Subject, SubjectSchema } from '../../database/schemas/subject.schema';
 import {
   Settings,
   SettingsSchema,
 } from '../../database/schemas/settings.schema';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Module({
   imports: [
@@ -18,11 +20,12 @@ import {
       { name: Exam.name, schema: ExamSchema },
       { name: Student.name, schema: StudentSchema },
       { name: Class.name, schema: ClassSchema },
+      { name: Subject.name, schema: SubjectSchema },
       { name: Settings.name, schema: SettingsSchema },
     ]),
   ],
   controllers: [ResultsController],
-  providers: [ResultsService],
+  providers: [ResultsService, TenantDatabaseService],
   exports: [ResultsService],
 })
 export class ResultsModule {}
