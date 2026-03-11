@@ -141,6 +141,36 @@ export class SchoolsService {
     return school;
   }
 
+  /**
+   * Get school settings by ID
+   * Returns settings with currency, timezone, and other configuration
+   */
+  async getSettings(id: string) {
+    const school = await this.schoolModel
+      .findById(id)
+      .select('settings features name code')
+      .exec();
+
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    return {
+      success: true,
+      data: {
+        currency: school.settings?.currency || 'INR',
+        timezone: school.settings?.timezone || 'Asia/Kolkata',
+        dateFormat: school.settings?.dateFormat || 'DD/MM/YYYY',
+        academicYearStart: school.settings?.academicYearStart || 4,
+        academicYearEnd: school.settings?.academicYearEnd || 3,
+        gradingSystem: school.settings?.gradingSystem || 'percentage',
+        attendanceType: school.settings?.attendanceType || 'daily',
+        workingDays: school.settings?.workingDays || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+        features: school.features || {},
+      },
+    };
+  }
+
   async findByCode(code: string): Promise<SchoolDocument> {
     const school = await this.schoolModel
       .findOne({ code })

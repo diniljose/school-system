@@ -73,6 +73,29 @@ export class AttendanceController {
     return { success: true, data: [] };
   }
 
+  @Get('daily-summary')
+  @RequirePermissions('attendance:view')
+  @ApiOperation({ summary: 'Get daily attendance summary for dashboard charts' })
+  @ApiQuery({ name: 'fromDate', required: true, type: String, description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'toDate', required: true, type: String, description: 'End date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'classId', required: false, type: String, description: 'Filter by class ID' })
+  @ApiQuery({ name: 'section', required: false, type: String, description: 'Filter by section' })
+  @ApiResponse({ status: 200, description: 'Daily summary retrieved successfully' })
+  async getDailySummary(
+    @Query('fromDate') fromDate: string,
+    @Query('toDate') toDate: string,
+    @Query('classId') classId: string,
+    @Query('section') section: string,
+    @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
+  ) {
+    const tenantContext = {
+      schoolCode: (req as any).user?.schoolCode,
+      isTenantUser: (req as any).user?.isTenantUser,
+    };
+    return this.attendanceService.getDailySummary(schoolId, fromDate, toDate, classId, section, tenantContext);
+  }
+
   @Post()
   @RequirePermissions('attendance:create')
   @ApiOperation({ summary: 'Mark attendance for entire class (alias for mark-class)' })

@@ -897,4 +897,108 @@ export class AttendanceService {
       monthlyData,
     };
   }
+
+  /**
+   * Get daily attendance summary for dashboard chart
+   * Returns attendance counts for each day in the date range
+   */
+  async getDailySummary(
+    schoolId: string,
+    fromDate: string,
+    toDate: string,
+    classId?: string,
+    section?: string,
+    context?: TenantContext,
+  ) {
+    const attendanceModel = await this.getAttendanceModel(context);
+
+    const startDate = new Date(fromDate);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(toDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Build base filter
+    const baseFilter: any = {
+      date: { $gte: startDate, $lte: endDate },
+    };
+    
+    if (!context?.isTenantUser && schoolId) {
+      baseFilter.school = new Types.ObjectId(schoolId);
+    }
+
+    // Add class filter if provided
+    if (classId) {
+      baseFilter.class = new Types.ObjectId(classId);
+    }
+
+    // Add section filter if provided
+    if (section) {
+      baseFilter.section = section;
+    }
+
+    // Aggregate attendance by date - unwind records array to count individual student statuses
+    const dailyStats = await attendanceModel.aggregate([
+      { $match: baseFilter },
+      // Unwind the records array to get individual student attendance
+      { $unwind: '$records' },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+          present: {
+            $sum: {
+              $cond: [
+                { $in: ['$records.status', [AttendanceStatus.PRESENT, AttendanceStatus.LATE]] },
+                1,
+                0,
+              ],
+            },
+          },
+          absent: {
+            $sum: {
+              $cond: [{ $eq: ['$records.status', AttendanceStatus.ABSENT] }, 1, 0],
+            },
+          },
+          late: {
+            $sum: {
+              $cond: [{ $eq: ['$records.status', AttendanceStatus.LATE] }, 1, 0],
+            },
+          },
+          halfDay: {
+            $sum: {
+              $cond: [{ $eq: ['$records.status', AttendanceStatus.HALF_DAY] }, 1, 0],
+            },
+          },
+          excused: {
+            $sum: {
+              $cond: [{ $eq: ['$records.status', AttendanceStatus.EXCUSED] }, 1, 0],
+            },
+          },
+          total: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Transform to desired format
+    const data = dailyStats.map((day) => ({
+      date: day._id,
+      present: day.present,
+      absent: day.absent,
+      late: day.late,
+      halfDay: day.halfDay,
+      excused: day.excused,
+      total: day.total,
+      presentPercentage: day.total > 0 ? parseFloat(((day.present / day.total) * 100).toFixed(1)) : 0,
+    }));
+
+    return {
+      success: true,
+      data,
+      meta: {
+        fromDate,
+        toDate,
+        totalDays: data.length,
+      },
+    };
+  }
 }

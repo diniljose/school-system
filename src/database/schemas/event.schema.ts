@@ -99,6 +99,15 @@ export class SchoolEvent {
   @Prop({ type: Types.ObjectId, ref: 'User' })
   createdBy: Types.ObjectId;
 
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Teacher' }], default: [] })
+  responsibleTeachers: Types.ObjectId[];
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Student' }], default: [] })
+  assignedStudents: Types.ObjectId[];
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Student' }], default: [] })
+  leaders: Types.ObjectId[];
+
   @Prop({ default: true })
   isActive: boolean;
 }

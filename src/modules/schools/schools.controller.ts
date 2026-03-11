@@ -26,6 +26,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { SchoolAccessGuard } from '../../common/guards/school-access.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('schools')
 @ApiBearerAuth()
@@ -33,6 +34,17 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 @UseGuards(JwtAuthGuard, PermissionsGuard, SchoolAccessGuard)
 export class SchoolsController {
   constructor(private readonly schoolsService: SchoolsService) {}
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // CURRENT SCHOOL ENDPOINTS (User's own school)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  @Get('current/settings')
+  @ApiOperation({ summary: 'Get current school settings' })
+  @ApiResponse({ status: 200, description: 'Settings retrieved successfully' })
+  async getCurrentSettings(@CurrentUser('school') schoolId: string) {
+    return this.schoolsService.getSettings(schoolId);
+  }
 
   @Post()
   @RequirePermissions('school:create')

@@ -155,6 +155,9 @@ export class EventsService {
         .populate('targetClasses', 'name grade')
         .populate('academicYear', 'name')
         .populate('createdBy', 'firstName lastName')
+        .populate('responsibleTeachers', 'firstName lastName')
+        .populate('assignedStudents', 'firstName lastName rollNumber')
+        .populate('leaders', 'firstName lastName rollNumber')
         .skip(skip)
         .limit(limit)
         .sort({ startDate: 1 }),
@@ -284,7 +287,10 @@ export class EventsService {
       .findOne(filter)
       .populate('targetClasses', 'name grade')
       .populate('academicYear', 'name startDate endDate')
-      .populate('createdBy', 'firstName lastName');
+      .populate('createdBy', 'firstName lastName')
+      .populate('responsibleTeachers', 'firstName lastName email employeeId')
+      .populate('assignedStudents', 'firstName lastName rollNumber admissionNumber')
+      .populate('leaders', 'firstName lastName rollNumber admissionNumber');
 
     if (!event) {
       throw new NotFoundException('Event not found');
@@ -314,6 +320,22 @@ export class EventsService {
     if (dto.endDate) updateData.endDate = new Date(dto.endDate);
     if (dto.targetClasses) {
       updateData.targetClasses = dto.targetClasses.map(
+        (id) => new Types.ObjectId(id),
+      );
+    }
+    // Handle participant arrays - convert to ObjectIds
+    if (dto.responsibleTeachers) {
+      updateData.responsibleTeachers = dto.responsibleTeachers.map(
+        (id) => new Types.ObjectId(id),
+      );
+    }
+    if (dto.assignedStudents) {
+      updateData.assignedStudents = dto.assignedStudents.map(
+        (id) => new Types.ObjectId(id),
+      );
+    }
+    if (dto.leaders) {
+      updateData.leaders = dto.leaders.map(
         (id) => new Types.ObjectId(id),
       );
     }
