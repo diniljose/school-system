@@ -36,6 +36,7 @@ import { ClassTeacherAssignmentsModule } from './modules/class-teacher-assignmen
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { EventsModule } from './modules/events/events.module';
+import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -97,6 +98,7 @@ import { AppService } from './app.service';
     DashboardModule,
     EnrollmentsModule,
     EventsModule,
+    ActivityLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

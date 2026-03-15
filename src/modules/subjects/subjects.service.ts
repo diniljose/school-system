@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -19,6 +20,7 @@ import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { QuerySubjectDto } from './dto/query-subject.dto';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
+import { ActivityLoggerService } from '../activity-logs/activity-logger.service';
 
 export interface TenantContext {
   schoolId?: string;
@@ -28,11 +30,14 @@ export interface TenantContext {
 
 @Injectable()
 export class SubjectsService {
+  private readonly logger = new Logger(SubjectsService.name);
+  
   constructor(
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
     private tenantDatabaseService: TenantDatabaseService,
+    private activityLogger: ActivityLoggerService,
   ) {}
 
   private async getSubjectModel(
@@ -75,6 +80,7 @@ export class SubjectsService {
     createSubjectDto: CreateSubjectDto,
     schoolId: string,
     context?: TenantContext,
+    userId?: string,
   ): Promise<Subject> {
     try {
       const subjectModel = await this.getSubjectModel(context);
@@ -102,6 +108,19 @@ export class SubjectsService {
 
       const newSubject = new subjectModel(subjectData);
       await newSubject.save();
+
+      // Log activity (non-blocking)
+      if (userId) {
+        this.activityLogger.crud('create', 'Subject', newSubject._id.toString(), {
+          schoolId,
+          userId,
+          schoolCode: context?.schoolCode,
+          isTenantUser: context?.isTenantUser,
+        }, {
+          resourceName: createSubjectDto.name,
+          newData: { name: createSubjectDto.name, code: createSubjectDto.code },
+        });
+      }
 
       return newSubject;
     } catch (error) {
@@ -209,8 +228,12 @@ export class SubjectsService {
   async update(
     id: string,
     updateSubjectDto: UpdateSubjectDto,
+    schoolId: string,
     context?: TenantContext,
+    userId?: string,
   ): Promise<Subject> {
+    this.logger.debug(`UPDATE called: id=${id}, schoolId=${schoolId}, userId=${userId}, context=${JSON.stringify(context)}`);
+    
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -221,6 +244,9 @@ export class SubjectsService {
     if (!subject) {
       throw new NotFoundException('Subject not found');
     }
+
+    // Store previous data for audit
+    const previousData = subject.toObject();
 
     if (updateSubjectDto.code && updateSubjectDto.code !== subject.code) {
       const filter: any = {
@@ -258,10 +284,33 @@ export class SubjectsService {
       .populate('teachers', 'firstName lastName employeeId')
       .exec();
 
+    // Log activity (non-blocking)
+    this.logger.debug(`Activity logging: userId=${userId}, will log=${!!userId}`);
+    if (userId) {
+      this.logger.debug(`Calling activityLogger.crud for Subject update`);
+      this.activityLogger.crud('update', 'Subject', id, {
+        schoolId,
+        userId,
+        schoolCode: context?.schoolCode,
+        isTenantUser: context?.isTenantUser,
+      }, {
+        resourceName: updatedSubject.name,
+        previousData: { name: previousData.name, code: previousData.code },
+        newData: updateSubjectDto,
+      });
+    } else {
+      this.logger.warn(`userId is not provided, skipping activity logging`);
+    }
+
     return updatedSubject;
   }
 
-  async remove(id: string, context?: TenantContext): Promise<{ message: string }> {
+  async remove(
+    id: string,
+    schoolId: string,
+    context?: TenantContext,
+    userId?: string,
+  ): Promise<{ message: string }> {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid subject ID');
     }
@@ -276,6 +325,8 @@ export class SubjectsService {
       throw new NotFoundException('Subject not found');
     }
 
+    const subjectName = subject.name;
+
     await subjectModel.findByIdAndDelete(id);
 
     await classModel.updateMany(
@@ -287,6 +338,18 @@ export class SubjectsService {
       { subjects: new Types.ObjectId(id) },
       { $pull: { subjects: new Types.ObjectId(id) } },
     );
+
+    // Log activity (non-blocking)
+    if (userId) {
+      this.activityLogger.crud('delete', 'Subject', id, {
+        schoolId,
+        userId,
+        schoolCode: context?.schoolCode,
+        isTenantUser: context?.isTenantUser,
+      }, {
+        resourceName: subjectName,
+      });
+    }
 
     return { message: 'Subject deleted successfully' };
   }

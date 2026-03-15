@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -22,6 +23,11 @@ import {
   STUDENT_ACTION_OPTIONS,
 } from './dto/student-action.dto';
 import { EnrollmentStatus } from '../../database/schemas/enrollment.schema';
+import {
+  AuditLog,
+  AuditLogDocument,
+  AuditAction,
+} from '../../database/schemas/audit-log.schema';
 
 export interface TenantContext {
   schoolId?: string;
@@ -31,10 +37,49 @@ export interface TenantContext {
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(
     @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
+    @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
     private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  private async logActivity(
+    action: AuditAction,
+    resourceId: string,
+    description: string,
+    schoolId: string,
+    userId: string,
+    context?: TenantContext,
+    previousData?: any,
+    newData?: any,
+  ) {
+    try {
+      const logData = {
+        school: new Types.ObjectId(schoolId),
+        user: new Types.ObjectId(userId),
+        action,
+        resource: 'Student',
+        resourceId: new Types.ObjectId(resourceId),
+        description,
+        previousData,
+        newData,
+      };
+
+      if (context?.isTenantUser && context?.schoolCode) {
+        const auditModel = await this.tenantDatabaseService.getTenantModel(
+          context.schoolCode,
+          'AuditLog',
+        );
+        await auditModel.create(logData);
+      } else {
+        await this.auditLogModel.create(logData);
+      }
+    } catch (error) {
+      this.logger.error('Failed to log activity', error.stack);
+    }
+  }
 
   private async getStudentModel(
     context?: TenantContext,
@@ -52,6 +97,7 @@ export class StudentsService {
     createStudentDto: CreateStudentDto,
     schoolId: string,
     context?: TenantContext,
+    userId?: string,
   ): Promise<Student> {
     const model = await this.getStudentModel(context);
 
@@ -78,8 +124,23 @@ export class StudentsService {
     studentData.school = schoolId;
 
     const student = new model(studentData);
+    const saved = await student.save();
 
-    return student.save();
+    // Log activity
+    if (userId) {
+      await this.logActivity(
+        AuditAction.CREATE,
+        saved._id.toString(),
+        `Student ${createStudentDto.firstName} ${createStudentDto.lastName} registered`,
+        schoolId,
+        userId,
+        context,
+        null,
+        { firstName: createStudentDto.firstName, lastName: createStudentDto.lastName, admissionNumber: createStudentDto.admissionNumber },
+      );
+    }
+
+    return saved;
   }
 
   async findAll(
@@ -194,12 +255,16 @@ export class StudentsService {
     updateStudentDto: UpdateStudentDto,
     schoolId: string,
     context?: TenantContext,
+    userId?: string,
   ): Promise<Student> {
     const model = await this.getStudentModel(context);
     const filter: any = { _id: id };
     if (!context?.isTenantUser) {
       filter.school = schoolId;
     }
+
+    // Get previous data for audit log
+    const previousStudent = await model.findOne(filter).lean();
 
     const student = await model.findOneAndUpdate(
       filter,
@@ -211,6 +276,20 @@ export class StudentsService {
       throw new NotFoundException('Student not found');
     }
 
+    // Log activity
+    if (userId) {
+      await this.logActivity(
+        AuditAction.UPDATE,
+        id,
+        `Student ${student.firstName} ${student.lastName} updated`,
+        schoolId,
+        userId,
+        context,
+        previousStudent,
+        updateStudentDto,
+      );
+    }
+
     return student;
   }
 
@@ -218,8 +297,9 @@ export class StudentsService {
     id: string,
     schoolId: string,
     context?: TenantContext,
+    userId?: string,
   ): Promise<Student> {
-    return this.updateStatus(id, StudentStatus.INACTIVE, schoolId, context);
+    return this.updateStatus(id, StudentStatus.INACTIVE, schoolId, context, userId, true);
   }
 
   async updateStatus(
@@ -227,6 +307,8 @@ export class StudentsService {
     status: StudentStatus,
     schoolId: string,
     context?: TenantContext,
+    userId?: string,
+    isDelete?: boolean,
   ): Promise<Student> {
     const model = await this.getStudentModel(context);
     const filter: any = { _id: id };
@@ -242,6 +324,20 @@ export class StudentsService {
 
     if (!student) {
       throw new NotFoundException('Student not found');
+    }
+
+    // Log activity
+    if (userId) {
+      await this.logActivity(
+        isDelete ? AuditAction.DELETE : AuditAction.UPDATE,
+        id,
+        isDelete
+          ? `Student ${student.firstName} ${student.lastName} deactivated`
+          : `Student ${student.firstName} ${student.lastName} status changed to ${status}`,
+        schoolId,
+        userId,
+        context,
+      );
     }
 
     return student;

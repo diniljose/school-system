@@ -9,6 +9,7 @@ import {
   AcademicYear,
   AcademicYearSchema,
 } from '../../database/schemas/academic-year.schema';
+import { AuditLog, AuditLogSchema } from '../../database/schemas/audit-log.schema';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Module({
@@ -18,6 +19,7 @@ import { TenantDatabaseService } from '../../database/tenant-database.service';
       { name: User.name, schema: UserSchema },
       { name: Class.name, schema: ClassSchema },
       { name: AcademicYear.name, schema: AcademicYearSchema },
+      { name: AuditLog.name, schema: AuditLogSchema },
     ]),
   ],
   controllers: [StudentsController],

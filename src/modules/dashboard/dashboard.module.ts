@@ -23,6 +23,7 @@ import { Exam, ExamSchema } from '../../database/schemas/exam.schema';
 import { User, UserSchema } from '../../database/schemas/user.schema';
 import { Parent, ParentSchema } from '../../database/schemas/parent.schema';
 import { Result, ResultSchema } from '../../database/schemas/result.schema';
+import { AuditLog, AuditLogSchema } from '../../database/schemas/audit-log.schema';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Module({
@@ -40,6 +41,7 @@ import { TenantDatabaseService } from '../../database/tenant-database.service';
       { name: User.name, schema: UserSchema },
       { name: Parent.name, schema: ParentSchema },
       { name: Result.name, schema: ResultSchema },
+      { name: AuditLog.name, schema: AuditLogSchema },
     ]),
   ],
   controllers: [DashboardController],

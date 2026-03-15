@@ -221,12 +221,13 @@ export class AuthService {
 
     // Audit log
     await this.createAuditLog(
-      user.school,
+      user.school || school?._id,
       user._id,
       AuditAction.LOGIN,
       'User',
       user._id,
-      'User logged in',
+      `${user.firstName} ${user.lastName} logged in`,
+      school?.code,
     );
 
     // Get school info if applicable
@@ -1658,16 +1659,33 @@ export class AuthService {
     resource: string,
     resourceId: any,
     description: string,
+    schoolCode?: string,
   ) {
     try {
-      await this.auditLogModel.create({
+      const logData = {
         school,
         user,
         action,
         resource,
         resourceId,
         description,
-      });
+      };
+
+      this.logger.debug(`Creating audit log: action=${action}, resource=${resource}, schoolCode=${schoolCode}`);
+
+      // If we have a school code, save to tenant database
+      if (schoolCode) {
+        const auditLogModel = await this.tenantDatabaseService.getTenantModel(
+          schoolCode,
+          'AuditLog',
+        );
+        const saved = await auditLogModel.create(logData);
+        this.logger.debug(`Audit log saved to tenant DB: ${saved._id}`);
+      } else {
+        // Save to main database for platform admin
+        const saved = await this.auditLogModel.create(logData);
+        this.logger.debug(`Audit log saved to main DB: ${saved._id}`);
+      }
     } catch (error) {
       this.logger.error('Failed to create audit log', error.stack);
     }

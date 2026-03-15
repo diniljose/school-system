@@ -28,6 +28,7 @@ import { RoleSchema, DEFAULT_SCHOOL_ROLES } from './schemas/role.schema';
 import { EnrollmentSchema } from './schemas/enrollment.schema';
 import { EventSchema } from './schemas/event.schema';
 import { ClassTeacherAssignmentSchema } from './schemas/class-teacher-assignment.schema';
+import { AuditLogSchema } from './schemas/audit-log.schema';
 
 // Schema registry for tenant databases
 const TENANT_SCHEMAS: Record<string, Schema> = {
@@ -50,6 +51,7 @@ const TENANT_SCHEMAS: Record<string, Schema> = {
   Enrollment: EnrollmentSchema,
   SchoolEvent: EventSchema,
   ClassTeacherAssignment: ClassTeacherAssignmentSchema,
+  AuditLog: AuditLogSchema,
 };
 
 @Injectable()

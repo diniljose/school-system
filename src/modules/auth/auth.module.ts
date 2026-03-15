@@ -13,6 +13,7 @@ import {
   AuditLog,
   AuditLogSchema,
 } from '../../database/schemas/audit-log.schema';
+import { TenantDatabaseService } from '../../database/tenant-database.service';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import {
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
+  providers: [AuthService, JwtStrategy, LocalStrategy, TenantDatabaseService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

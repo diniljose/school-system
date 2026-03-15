@@ -157,6 +157,12 @@ export const PERMISSION_MODULES = [
     description: 'School events and calendar management',
     permissions: ['event:create', 'event:view', 'event:update', 'event:delete'],
   },
+  {
+    code: 'activity-log',
+    name: 'Activity Logs',
+    description: 'View system activity and audit logs',
+    permissions: ['activity-log:view', 'activity-log:export'],
+  },
 ];
 
 @Injectable()

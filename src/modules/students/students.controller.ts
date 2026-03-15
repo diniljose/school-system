@@ -48,10 +48,11 @@ export class StudentsController {
     @CurrentUser('school') schoolId: string,
     @Req() req: Request,
   ) {
+    const userId = (req as any).user?.sub || (req as any).user?.userId;
     return this.studentsService.create(createStudentDto, schoolId, {
       schoolCode: (req as any).user?.schoolCode,
       isTenantUser: (req as any).user?.isTenantUser,
-    });
+    }, userId);
   }
 
   @Get()
@@ -120,10 +121,11 @@ export class StudentsController {
     @CurrentUser('school') schoolId: string,
     @Req() req: Request,
   ) {
+    const userId = (req as any).user?.sub || (req as any).user?.userId;
     return this.studentsService.update(id, updateStudentDto, schoolId, {
       schoolCode: (req as any).user?.schoolCode,
       isTenantUser: (req as any).user?.isTenantUser,
-    });
+    }, userId);
   }
 
   @Delete(':id')
@@ -136,10 +138,11 @@ export class StudentsController {
     @CurrentUser('school') schoolId: string,
     @Req() req: Request,
   ) {
+    const userId = (req as any).user?.sub || (req as any).user?.userId;
     return this.studentsService.remove(id, schoolId, {
       schoolCode: (req as any).user?.schoolCode,
       isTenantUser: (req as any).user?.isTenantUser,
-    });
+    }, userId);
   }
 
   @Post('bulk')

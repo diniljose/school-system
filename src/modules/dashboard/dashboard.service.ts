@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Student, StudentDocument } from '../../database/schemas/student.schema';
@@ -13,6 +13,7 @@ import { Exam, ExamDocument } from '../../database/schemas/exam.schema';
 import { User, UserDocument } from '../../database/schemas/user.schema';
 import { Parent, ParentDocument } from '../../database/schemas/parent.schema';
 import { Result, ResultDocument } from '../../database/schemas/result.schema';
+import { AuditLog, AuditLogDocument, AuditAction } from '../../database/schemas/audit-log.schema';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
 import { FeeStatus } from '../../common/enums/student-status.enum';
 
@@ -23,6 +24,8 @@ interface TenantContext {
 
 @Injectable()
 export class DashboardService {
+  private readonly logger = new Logger(DashboardService.name);
+  
   constructor(
     @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
@@ -36,8 +39,19 @@ export class DashboardService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Parent.name) private parentModel: Model<ParentDocument>,
     @InjectModel(Result.name) private resultModel: Model<ResultDocument>,
+    @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
     private tenantDatabaseService: TenantDatabaseService,
   ) {}
+
+  private async getAuditLogModel(context?: TenantContext): Promise<Model<AuditLogDocument>> {
+    if (context?.isTenantUser && context?.schoolCode) {
+      return this.tenantDatabaseService.getTenantModel<AuditLogDocument>(
+        context.schoolCode,
+        'AuditLog',
+      );
+    }
+    return this.auditLogModel;
+  }
 
   private async getStudentModel(context?: TenantContext): Promise<Model<StudentDocument>> {
     if (context?.isTenantUser && context?.schoolCode) {
@@ -380,86 +394,177 @@ export class DashboardService {
 
   /**
    * Get recent activities for dashboard
+   * Now uses real AuditLog collection for actual activity tracking
    */
   async getRecentActivities(
     schoolId: string,
     context?: TenantContext,
     limit: number = 10,
   ) {
-    const studentModel = await this.getStudentModel(context);
-    const teacherModel = await this.getTeacherModel(context);
-    const enrollmentModel = await this.getEnrollmentModel(context);
-    const eventModel = await this.getEventModel(context);
+    this.logger.debug(`getRecentActivities called: schoolId=${schoolId}, isTenantUser=${context?.isTenantUser}, schoolCode=${context?.schoolCode}`);
+    
+    const auditLogModel = await this.getAuditLogModel(context);
+    
+    // Debug: Check collection name
+    this.logger.debug(`AuditLog model collection: ${auditLogModel.collection.name}`);
 
-    const baseFilter: any = {};
-    if (!context?.isTenantUser) {
-      baseFilter.school = new Types.ObjectId(schoolId);
+    const filter: any = {};
+    if (!context?.isTenantUser && schoolId) {
+      filter.school = new Types.ObjectId(schoolId);
     }
 
-    const activities: any[] = [];
+    this.logger.debug(`Query filter: ${JSON.stringify(filter)}`);
 
-    // Get recent student registrations
-    const recentStudents = await studentModel
-      .find({ ...baseFilter, isActive: true })
+    // Get recent audit logs
+    const logs = await auditLogModel
+      .find(filter)
       .sort({ createdAt: -1 })
-      .limit(5)
-      .select('firstName lastName createdAt');
+      .limit(limit)
+      .populate('user', 'firstName lastName email role profileImage')
+      .lean();
 
-    recentStudents.forEach((student) => {
-      activities.push({
-        type: 'student_registered',
-        title: 'New Student Registered',
-        description: `${student.firstName} ${student.lastName} was registered`,
-        timestamp: student['createdAt'],
-        icon: 'person_add',
-      });
-    });
+    this.logger.debug(`Found ${logs.length} audit logs`);
+    if (logs.length > 0) {
+      this.logger.debug(`First log: ${JSON.stringify(logs[0])}`);
+    }
 
-    // Get recent enrollments
-    const recentEnrollments = await enrollmentModel
-      .find({ ...baseFilter, isActive: true })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('student', 'firstName lastName')
-      .populate('class', 'name grade');
-
-    recentEnrollments.forEach((enrollment: any) => {
-      if (enrollment.student) {
-        activities.push({
-          type: 'enrollment',
-          title: 'Student Enrolled',
-          description: `${enrollment.student?.firstName} ${enrollment.student?.lastName} enrolled in ${enrollment.class?.name || 'a class'}`,
-          timestamp: enrollment['createdAt'],
-          icon: 'school',
-        });
-      }
-    });
-
-    // Get recent events
-    const recentEvents = await eventModel
-      .find({ ...baseFilter, isActive: true })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('title type createdAt');
-
-    recentEvents.forEach((event) => {
-      activities.push({
-        type: 'event_created',
-        title: 'Event Created',
-        description: `${event.title}`,
-        timestamp: event['createdAt'],
-        icon: 'event',
-      });
-    });
-
-    // Sort all activities by timestamp and limit
-    activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    const limitedActivities = activities.slice(0, limit);
+    // Transform to dashboard-friendly format
+    const activities = logs.map((log: any) => ({
+      id: log._id,
+      type: this.getActivityType(log.action, log.resource),
+      title: this.getActivityTitle(log.action, log.resource),
+      description: log.description || this.generateActivityDescription(log),
+      timestamp: log.createdAt,
+      icon: this.getActivityIcon(log.action, log.resource),
+      user: log.user ? {
+        id: log.user._id,
+        name: `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || log.user.email,
+        avatar: log.user.profileImage,
+        role: log.user.role,
+      } : null,
+      resource: log.resource,
+      action: log.action,
+      resourceId: log.resourceId,
+    }));
 
     return {
       success: true,
-      data: limitedActivities,
+      data: activities,
     };
+  }
+
+  /**
+   * Helper: Get activity type for UI categorization
+   */
+  private getActivityType(action: AuditAction, resource: string): string {
+    if ([AuditAction.LOGIN, AuditAction.LOGOUT].includes(action)) return 'auth';
+    if ([AuditAction.FEE_PAYMENT].includes(action)) return 'payment';
+    if ([AuditAction.ATTENDANCE_MARK].includes(action)) return 'attendance';
+    if ([AuditAction.RESULT_PUBLISH].includes(action)) return 'academic';
+    return `${action}_${resource.toLowerCase()}`;
+  }
+
+  /**
+   * Helper: Get activity title
+   */
+  private getActivityTitle(action: AuditAction, resource: string): string {
+    const actionTitles: Record<AuditAction, string> = {
+      [AuditAction.CREATE]: `New ${resource} Created`,
+      [AuditAction.UPDATE]: `${resource} Updated`,
+      [AuditAction.DELETE]: `${resource} Deleted`,
+      [AuditAction.LOGIN]: 'User Logged In',
+      [AuditAction.LOGOUT]: 'User Logged Out',
+      [AuditAction.PASSWORD_CHANGE]: 'Password Changed',
+      [AuditAction.PASSWORD_RESET]: 'Password Reset',
+      [AuditAction.ROLE_CHANGE]: 'Role Changed',
+      [AuditAction.PERMISSION_CHANGE]: 'Permissions Updated',
+      [AuditAction.FEE_PAYMENT]: 'Fee Payment Received',
+      [AuditAction.ATTENDANCE_MARK]: 'Attendance Marked',
+      [AuditAction.RESULT_PUBLISH]: 'Results Published',
+      [AuditAction.PROMOTION]: 'Student Promotion',
+      [AuditAction.TRANSFER]: 'Student Transfer',
+      [AuditAction.NOTIFICATION_SEND]: 'Notification Sent',
+      [AuditAction.SETTINGS_CHANGE]: 'Settings Changed',
+      [AuditAction.EXPORT]: 'Data Exported',
+      [AuditAction.BULK_OPERATION]: 'Bulk Operation Performed',
+    };
+    
+    return actionTitles[action] || `${action} on ${resource}`;
+  }
+
+  /**
+   * Helper: Get icon for activity
+   */
+  private getActivityIcon(action: AuditAction, resource: string): string {
+    const actionIcons: Record<AuditAction, string> = {
+      [AuditAction.CREATE]: 'add_circle',
+      [AuditAction.UPDATE]: 'edit',
+      [AuditAction.DELETE]: 'delete',
+      [AuditAction.LOGIN]: 'login',
+      [AuditAction.LOGOUT]: 'logout',
+      [AuditAction.PASSWORD_CHANGE]: 'lock',
+      [AuditAction.PASSWORD_RESET]: 'lock_reset',
+      [AuditAction.ROLE_CHANGE]: 'admin_panel_settings',
+      [AuditAction.PERMISSION_CHANGE]: 'security',
+      [AuditAction.FEE_PAYMENT]: 'payments',
+      [AuditAction.ATTENDANCE_MARK]: 'fact_check',
+      [AuditAction.RESULT_PUBLISH]: 'grade',
+      [AuditAction.PROMOTION]: 'moving',
+      [AuditAction.TRANSFER]: 'swap_horiz',
+      [AuditAction.NOTIFICATION_SEND]: 'notifications',
+      [AuditAction.SETTINGS_CHANGE]: 'settings',
+      [AuditAction.EXPORT]: 'download',
+      [AuditAction.BULK_OPERATION]: 'dynamic_feed',
+    };
+
+    const resourceIcons: Record<string, string> = {
+      'Student': 'school',
+      'Teacher': 'person',
+      'Parent': 'family_restroom',
+      'Fee': 'payments',
+      'Attendance': 'fact_check',
+      'Class': 'class',
+      'Subject': 'menu_book',
+      'Exam': 'quiz',
+      'Result': 'grade',
+      'Event': 'event',
+      'Notification': 'notifications',
+    };
+
+    return actionIcons[action] || resourceIcons[resource] || 'history';
+  }
+
+  /**
+   * Helper: Generate description from log data
+   */
+  private generateActivityDescription(log: any): string {
+    const userName = log.user 
+      ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || log.user.email
+      : 'Someone';
+
+    const actionVerbs: Record<AuditAction, string> = {
+      [AuditAction.CREATE]: 'created',
+      [AuditAction.UPDATE]: 'updated',
+      [AuditAction.DELETE]: 'deleted',
+      [AuditAction.LOGIN]: 'logged in',
+      [AuditAction.LOGOUT]: 'logged out',
+      [AuditAction.PASSWORD_CHANGE]: 'changed password',
+      [AuditAction.PASSWORD_RESET]: 'reset password',
+      [AuditAction.ROLE_CHANGE]: 'changed role',
+      [AuditAction.PERMISSION_CHANGE]: 'updated permissions',
+      [AuditAction.FEE_PAYMENT]: 'received payment',
+      [AuditAction.ATTENDANCE_MARK]: 'marked attendance',
+      [AuditAction.RESULT_PUBLISH]: 'published results',
+      [AuditAction.PROMOTION]: 'promoted student',
+      [AuditAction.TRANSFER]: 'transferred student',
+      [AuditAction.NOTIFICATION_SEND]: 'sent notification',
+      [AuditAction.SETTINGS_CHANGE]: 'changed settings',
+      [AuditAction.EXPORT]: 'exported data',
+      [AuditAction.BULK_OPERATION]: 'performed bulk operation',
+    };
+
+    const verb = actionVerbs[log.action as AuditAction] || log.action;
+    return `${userName} ${verb} ${log.resource.toLowerCase()}`;
   }
 
   /**

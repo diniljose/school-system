@@ -49,10 +49,11 @@ export class SubjectsController {
     @CurrentUser('school') schoolId: string,
     @Req() req: Request,
   ) {
+    const userId = (req as any).user?.sub || (req as any).user?.userId;
     return this.subjectsService.create(createSubjectDto, schoolId, {
       schoolCode: (req as any).user?.schoolCode,
       isTenantUser: (req as any).user?.isTenantUser,
-    });
+    }, userId);
   }
 
   @Get()
@@ -103,12 +104,14 @@ export class SubjectsController {
   async update(
     @Param('id') id: string,
     @Body() updateSubjectDto: UpdateSubjectDto,
+    @CurrentUser('school') schoolId: string,
     @Req() req: Request,
   ) {
-    return this.subjectsService.update(id, updateSubjectDto, {
+    const userId = (req as any).user?.sub || (req as any).user?.userId;
+    return this.subjectsService.update(id, updateSubjectDto, schoolId, {
       schoolCode: (req as any).user?.schoolCode,
       isTenantUser: (req as any).user?.isTenantUser,
-    });
+    }, userId);
   }
 
   @Delete(':id')
@@ -117,11 +120,16 @@ export class SubjectsController {
   @ApiParam({ name: 'id', description: 'Subject ID' })
   @ApiResponse({ status: 200, description: 'Subject deleted successfully' })
   @ApiResponse({ status: 404, description: 'Subject not found' })
-  async remove(@Param('id') id: string, @Req() req: Request) {
-    return this.subjectsService.remove(id, {
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser('school') schoolId: string,
+    @Req() req: Request,
+  ) {
+    const userId = (req as any).user?.sub || (req as any).user?.userId;
+    return this.subjectsService.remove(id, schoolId, {
       schoolCode: (req as any).user?.schoolCode,
       isTenantUser: (req as any).user?.isTenantUser,
-    });
+    }, userId);
   }
 
   @Post(':id/assign-class/:classId')
