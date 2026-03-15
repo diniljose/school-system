@@ -108,8 +108,57 @@ export class ClassesService {
 
       const existingClass = await classModel.findOne(filter);
 
+      // Build the new section from flat fields
+      let newSection: any = null;
+      if (createClassDto.section) {
+        newSection = {
+          name: createClassDto.section,
+          capacity: createClassDto.capacity || 30,
+        };
+        if (createClassDto.classTeacher) {
+          newSection.classTeacher = new Types.ObjectId(createClassDto.classTeacher);
+        }
+      }
+
+      // If class exists with the same name, add the new section to it
       if (existingClass) {
-        throw new ConflictException('Class with this name already exists');
+        // If no section specified, throw error (duplicate class without section)
+        if (!newSection) {
+          throw new ConflictException('Class with this name already exists');
+        }
+
+        // Check if section already exists in the class
+        const sectionExists = existingClass.sections?.some(
+          (s: any) => s.name?.toLowerCase() === newSection.name.toLowerCase(),
+        );
+
+        if (sectionExists) {
+          throw new ConflictException(
+            `Section "${newSection.name}" already exists in class "${existingClass.name}"`,
+          );
+        }
+
+        // Add the new section to existing class
+        existingClass.sections = existingClass.sections || [];
+        existingClass.sections.push(newSection);
+        await existingClass.save();
+
+        // If classTeacher was set, also update the teacher record
+        if (createClassDto.classTeacher) {
+          try {
+            await teacherModel.findByIdAndUpdate(
+              createClassDto.classTeacher,
+              { 
+                classTeacherOf: existingClass._id,
+                classTeacherSection: newSection.name,
+              },
+            );
+          } catch (err) {
+            // Non-critical: teacher update failed but section was added
+          }
+        }
+
+        return existingClass;
       }
 
       // Auto-derive grade if not provided
@@ -119,15 +168,8 @@ export class ClassesService {
 
       // Build sections array from flat fields if sections array not provided
       let sections: any[] = createClassDto.sections ? [...createClassDto.sections] : [];
-      if (sections.length === 0 && createClassDto.section) {
-        const sectionEntry: any = {
-          name: createClassDto.section,
-          capacity: createClassDto.capacity || 30,
-        };
-        if (createClassDto.classTeacher) {
-          sectionEntry.classTeacher = new Types.ObjectId(createClassDto.classTeacher);
-        }
-        sections = [sectionEntry];
+      if (sections.length === 0 && newSection) {
+        sections = [newSection];
       } else if (sections.length > 0) {
         // Convert classTeacher strings to ObjectIds in sections
         sections = sections.map((s: any) => ({
@@ -159,7 +201,10 @@ export class ClassesService {
         try {
           await teacherModel.findByIdAndUpdate(
             createClassDto.classTeacher,
-            { classTeacherOf: newClass._id },
+            { 
+              classTeacherOf: newClass._id,
+              classTeacherSection: sections[0].name,
+            },
           );
         } catch (err) {
           // Non-critical: teacher update failed but class was created

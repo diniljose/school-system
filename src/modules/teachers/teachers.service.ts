@@ -242,6 +242,18 @@ export class TeachersService {
         .populate('subjects', 'name code')
         .populate('assignedClasses', 'name grade')
         .populate('classTeacherOf', 'name grade')
+        .populate({
+          path: 'subjectAssignments.subject',
+          select: 'name code'
+        })
+        .populate({
+          path: 'subjectAssignments.class',
+          select: 'name grade'
+        })
+        .populate({
+          path: 'subjectAssignments.academicYear',
+          select: 'name year start end isCurrent'
+        })
         .skip(skip)
         .limit(limit)
         .sort({ firstName: 1 }),
