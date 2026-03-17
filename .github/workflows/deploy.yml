@@ -2,11 +2,12 @@ name: Deploy NestJS app to EC2
 
 on:
   workflow_dispatch:
-    inputs:
-      service_name:
-        description: 'Service name to deploy'
-        required: true
-        default: 'my-service'   # change or leave empty
+
+env:
+  APP_DIR: /home/dinil-dev/system-storage/apps/dev.school-management-api
+  REMOTE_TMP_DIR: /home/ubuntu
+  REMOTE_USER: ubuntu
+  SERVICE_NAME: dev.school-management-api.service
 
 # Remove push trigger to prevent auto deploy on push
 # push:
@@ -45,19 +46,29 @@ jobs:
 
       - name: Upload tarball to EC2
         run: |
-          scp -o StrictHostKeyChecking=no app.tar.gz ubuntu@${{ secrets.SERVER_HOST }}:/home/ubuntu/
+          scp -o StrictHostKeyChecking=no app.tar.gz "${REMOTE_USER}@${{ secrets.SERVER_HOST }}:${REMOTE_TMP_DIR}/app.tar.gz"
 
       - name: Deploy on EC2
-        env:
-          SERVICE_NAME: ${{ github.event.inputs.service_name }}
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_HOST }} <<EOF
+          ssh -o StrictHostKeyChecking=no "${REMOTE_USER}@${{ secrets.SERVER_HOST }}" <<EOF
             set -e
-            cd /home/dinil-dev/system-storage/apps/$SERVICE_NAME
-            sudo systemctl stop $SERVICE_NAME || true
-            rm -rf *
-            tar -xvzf /home/ubuntu/app.tar.gz -C /home/dinil-dev/system-storage/apps/$SERVICE_NAME
+
+            sudo mkdir -p "${APP_DIR}"
+            sudo chown -R ${REMOTE_USER}:${REMOTE_USER} "${APP_DIR}"
+
+            sudo systemctl stop "${SERVICE_NAME}" || true
+
+            find "${APP_DIR}" -mindepth 1 -maxdepth 1 \
+              ! -name '.env' \
+              ! -name '.env.prod' \
+              -exec rm -rf {} +
+
+            tar -xzf "${REMOTE_TMP_DIR}/app.tar.gz" -C "${APP_DIR}"
+            cd "${APP_DIR}"
             npm ci --omit=dev
-            sudo systemctl start $SERVICE_NAME
-            echo "Deployment complete for $SERVICE_NAME!"
+            sudo systemctl start "${SERVICE_NAME}"
+            sudo systemctl --no-pager --full status "${SERVICE_NAME}"
+
+            rm -f "${REMOTE_TMP_DIR}/app.tar.gz"
+            echo "Deployment complete for ${SERVICE_NAME}!"
           EOF

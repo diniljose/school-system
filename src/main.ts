@@ -99,10 +99,19 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = configService.get<number>('PORT', 3000);
-  await app.listen(port);
-  logger.log(`🚀 Application running on: http://localhost:${port}`);
-  logger.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  const host =
+    configService.get<string>('HOST') ||
+    configService.get<string>('SERVER_HOST') ||
+    '0.0.0.0';
+  const port = Number(
+    configService.get<string>('PORT') ||
+      configService.get<string>('SERVER_PORT') ||
+      3000,
+  );
+
+  await app.listen(port, host);
+  logger.log(`🚀 Application running on: http://${host}:${port}`);
+  logger.log(`📚 API Documentation: http://${host}:${port}/api/docs`);
   logger.log(`🏠 Environment: ${configService.get('NODE_ENV', 'dev')}`);
 }
 bootstrap();

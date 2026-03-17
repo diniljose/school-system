@@ -63,6 +63,7 @@ export class TenantDatabaseService implements OnModuleDestroy {
   constructor(private configService: ConfigService) {
     const mongoUri =
       this.configService.get<string>('MONGODB_URI') ||
+      this.configService.get<string>('SERVER_DB_URI') ||
       'mongodb://localhost:27017/school-platform';
     // Extract base URI without the DB name
     const lastSlash = mongoUri.lastIndexOf('/');

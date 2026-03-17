@@ -16,6 +16,7 @@ import { TenantDatabaseService } from '../tenant-database.service';
       useFactory: (config: ConfigService) => ({
         uri:
           config.get<string>('MONGODB_URI') ||
+          config.get<string>('SERVER_DB_URI') ||
           'mongodb://localhost:27017/school-platform',
         maxPoolSize: 20,
         serverSelectionTimeoutMS: 5000,
