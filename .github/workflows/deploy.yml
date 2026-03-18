@@ -2,17 +2,15 @@ name: Deploy NestJS app to EC2
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - develop
 
 env:
   APP_DIR: /home/dinil-dev/system-storage/apps/dev.school-management-api
   REMOTE_TMP_DIR: /home/ubuntu
   REMOTE_USER: ubuntu
   SERVICE_NAME: dev.school-management-api.service
-
-# Remove push trigger to prevent auto deploy on push
-# push:
-#   branches:
-#     - develop
 
 jobs:
   deploy:
