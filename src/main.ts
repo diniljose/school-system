@@ -20,7 +20,7 @@ async function bootstrap() {
   app.use(compression());
 
   // Global prefix
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('v1');
 
   // CORS configuration
   app.enableCors({
