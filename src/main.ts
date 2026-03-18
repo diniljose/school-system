@@ -1,21 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { CORS_ORIGINS, HOST, NODE_ENV, PORT } from './constants';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
-
-  const configService = app.get(ConfigService);
 
   // Security middleware
   app.use(helmet());
@@ -25,9 +23,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // CORS configuration
-  const corsOrigins = configService.get<string>('CORS_ORIGINS', 'http://localhost:3000');
   app.enableCors({
-    origin: corsOrigins.split(',').map((o) => o.trim()),
+    origin: CORS_ORIGINS,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -99,19 +96,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const host =
-    configService.get<string>('HOST') ||
-    configService.get<string>('SERVER_HOST') ||
-    '0.0.0.0';
-  const port = Number(
-    configService.get<string>('PORT') ||
-      configService.get<string>('SERVER_PORT') ||
-      3000,
-  );
-
-  await app.listen(port, host);
-  logger.log(`🚀 Application running on: http://${host}:${port}`);
-  logger.log(`📚 API Documentation: http://${host}:${port}/api/docs`);
-  logger.log(`🏠 Environment: ${configService.get('NODE_ENV', 'dev')}`);
+  await app.listen(PORT, HOST);
+  logger.log(`🚀 Application running on: http://${HOST}:${PORT}`);
+  logger.log(`📚 API Documentation: http://${HOST}:${PORT}/api/docs`);
+  logger.log(`🏠 Environment: ${NODE_ENV}`);
 }
 bootstrap();

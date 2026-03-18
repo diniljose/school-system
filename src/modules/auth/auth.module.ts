@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UsersModule } from '../users/users.module';
 import { SchoolsModule } from '../schools/schools.module';
+import { ACCESS_TOKEN_SECRET, JWT_EXPIRES_IN } from '../../constants';
 import {
   AuditLog,
   AuditLogSchema,
@@ -24,11 +24,18 @@ import { TenantDatabaseService } from '../../database/tenant-database.service';
     ]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN', '1d') },
-      }),
+      useFactory: () => {
+        if (!ACCESS_TOKEN_SECRET) {
+          throw new Error(
+            'Missing access token secret. Set ACCESS_TOKEN_SECRET_KALA, JWT_SECRET, or SERVER_JWT_SECRET.',
+          );
+        }
+
+        return {
+          secret: ACCESS_TOKEN_SECRET,
+          signOptions: { expiresIn: JWT_EXPIRES_IN as any },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

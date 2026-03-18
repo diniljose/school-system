@@ -17,12 +17,16 @@ import {
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { SchoolsService } from '../schools/schools.service';
 import { TenantDatabaseService } from '../../database/tenant-database.service';
+import {
+  IS_DEVELOPMENT,
+  JWT_REFRESH_EXPIRES_IN,
+  REFRESH_TOKEN_SECRET,
+} from '../../constants';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { LoginDto } from './dto/login.dto';
@@ -45,7 +49,6 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private configService: ConfigService,
     private schoolsService: SchoolsService,
     private tenantDatabaseService: TenantDatabaseService,
     @InjectModel(AuditLog.name)
@@ -803,10 +806,7 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>(
-          'JWT_REFRESH_SECRET',
-          this.configService.get<string>('JWT_SECRET'),
-        ),
+        secret: REFRESH_TOKEN_SECRET,
       });
 
       let user: any = null;
@@ -961,7 +961,7 @@ export class AuthService {
       message:
         'If an account with that email exists, a password reset link has been sent',
       // In development, return token for testing
-      ...(this.configService.get('NODE_ENV') === 'dev'
+      ...(IS_DEVELOPMENT
         ? { resetToken }
         : {}),
     };
@@ -1612,11 +1612,8 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>(
-        'JWT_REFRESH_SECRET',
-        this.configService.get<string>('JWT_SECRET'),
-      ),
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '30d') as any,
+      secret: REFRESH_TOKEN_SECRET,
+      expiresIn: JWT_REFRESH_EXPIRES_IN as any,
     });
 
     return { accessToken, refreshToken };
@@ -1642,11 +1639,8 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>(
-        'JWT_REFRESH_SECRET',
-        this.configService.get<string>('JWT_SECRET'),
-      ),
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', '30d') as any,
+      secret: REFRESH_TOKEN_SECRET,
+      expiresIn: JWT_REFRESH_EXPIRES_IN as any,
     });
 
     return { accessToken, refreshToken };

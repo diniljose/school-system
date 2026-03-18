@@ -4,9 +4,9 @@
  * Each school gets its own database for complete data isolation
  */
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as mongoose from 'mongoose';
 import { Connection, Model, Schema } from 'mongoose';
+import { MONGODB_URI } from '../constants';
 
 // Import schemas for tenant databases
 import { UserSchema } from './schemas/user.schema';
@@ -60,11 +60,8 @@ export class TenantDatabaseService implements OnModuleDestroy {
   private readonly connections = new Map<string, Connection>();
   private readonly baseUri: string;
 
-  constructor(private configService: ConfigService) {
-    const mongoUri =
-      this.configService.get<string>('MONGODB_URI') ||
-      this.configService.get<string>('SERVER_DB_URI') ||
-      'mongodb://localhost:27017/school-platform';
+  constructor() {
+    const mongoUri = MONGODB_URI;
     // Extract base URI without the DB name
     const lastSlash = mongoUri.lastIndexOf('/');
     this.baseUri = mongoUri.substring(0, lastSlash);

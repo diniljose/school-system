@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { getEnvFilePath } from './helpers/env.config';
+import { THROTTLE_LIMIT, THROTTLE_TTL } from './constants';
 
 // Core Modules
 import { DatabaseModule } from './database/database/database.module';
@@ -56,11 +57,10 @@ import { AppService } from './app.service';
 
     // Rate limiting
     ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => [
+      useFactory: () => [
         {
-          ttl: config.get<number>('THROTTLE_TTL', 60000),
-          limit: config.get<number>('THROTTLE_LIMIT', 100),
+          ttl: THROTTLE_TTL,
+          limit: THROTTLE_LIMIT,
         },
       ],
     }),

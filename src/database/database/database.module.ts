@@ -5,19 +5,15 @@
  */
 import { Module, Global } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigService } from '@nestjs/config';
+import { MONGODB_URI } from '../../constants';
 import { TenantDatabaseService } from '../tenant-database.service';
 
 @Global()
 @Module({
   imports: [
     MongooseModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri:
-          config.get<string>('MONGODB_URI') ||
-          config.get<string>('SERVER_DB_URI') ||
-          'mongodb://localhost:27017/school-platform',
+      useFactory: () => ({
+        uri: MONGODB_URI,
         maxPoolSize: 20,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,

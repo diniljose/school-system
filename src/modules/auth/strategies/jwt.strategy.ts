@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
+import { ACCESS_TOKEN_SECRET } from '../../../constants';
 import { UsersService } from '../../users/users.service';
 import { TenantDatabaseService } from '../../../database/tenant-database.service';
 
@@ -23,14 +23,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   private readonly logger = new Logger(JwtStrategy.name);
 
   constructor(
-    private configService: ConfigService,
     private usersService: UsersService,
     private tenantDatabaseService: TenantDatabaseService,
   ) {
+    if (!ACCESS_TOKEN_SECRET) {
+      throw new Error(
+        'Missing access token secret. Set ACCESS_TOKEN_SECRET_KALA, JWT_SECRET, or SERVER_JWT_SECRET.',
+      );
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: ACCESS_TOKEN_SECRET,
     });
   }
 
