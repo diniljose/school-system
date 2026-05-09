@@ -35,6 +35,8 @@ export const REFRESH_TOKEN_SECRET =
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 export const JWT_REFRESH_EXPIRES_IN =
   process.env.JWT_REFRESH_EXPIRES_IN || '30d';
+export const ENABLE_SEED_API = process.env.ENABLE_SEED_API || 'false';
+export const SEED_API_KEY = process.env.SEED_API_KEY || '';
 export const THROTTLE_TTL = parseInt(process.env.THROTTLE_TTL || '60000', 10);
 export const THROTTLE_LIMIT = parseInt(
   process.env.THROTTLE_LIMIT || '100',
